@@ -2,18 +2,18 @@ function [choices, memoryEvidence, visualEvidence, fullEvidence, ...
     visualDriftRate, memoryDriftRate] = doSampling(nSub, nTrial, cueLevel, coherenceLevel, congruent)
 
 % define sampling windows
-nSampMemory = 750;
-nSampTotal = nSampMemory*4;
+nSampMemory = (750+500)/50; %miliseconds allotted in the experiment divided by estimate of memory sampling rate
+nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the experiment
 
 % define sampling bounds
-threshold = 5;
+threshold = 3;
 memoryStartingPoint  = 0;  
 visualStartingPoint = 0;
 
 % create variables to store values
-memoryEvidence = zeros(nSub, nTrial, nSampMemory+nSampTotal); 
-visualEvidence = zeros(nSub, nTrial, nSampTotal);
-fullEvidence = zeros(nSub, nTrial, nSampTotal);
+memoryEvidence = zeros(nSub, nTrial, nSampMemory+nSampVisual); 
+visualEvidence = zeros(nSub, nTrial, nSampVisual);
+fullEvidence = zeros(nSub, nTrial, nSampVisual);
 choices = zeros(nSub,nTrial);
 RT = zeros(nSub, nTrial);
 memoryDriftRates = visualEvidence;
@@ -30,7 +30,7 @@ hold on;
 
 for subj=1:nSub
     for trial=1:nTrial
-        for t=1:nSampTotal
+        for t=1:nSampVisual
             for i=1:nSampMemory
                 % generate & accumulate memory samples
                  memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(0.65)));
@@ -108,12 +108,9 @@ for subj=1:nSub
     end
 end
 
-save('simVars.mat')
+outfile = sprintf('%.1fcue_%.1fcoh_%icong_%isubs_%itrials.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
+save(outfile)
 end
-
-
-
-
 
 
 
