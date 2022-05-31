@@ -1,12 +1,16 @@
 function [choices, memoryEvidence, visualEvidence, fullEvidence, ... 
-    visualDriftRate, memoryDriftRate] = doSampling(nSub, nTrial, cueLevel, coherenceLevel, congruent)
+    visualDriftRate, memoryDriftRate] = doSampling(cueLevel, coherenceLevel, congruent)
 
 % define sampling windows
 nSampMemory = (750+500)/50; %miliseconds allotted in the experiment divided by estimate of memory sampling rate
 nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the experiment
 
+% define number of subjects & trials
+nSub = 100;
+nTrial = 25;
+
 % define sampling bounds
-threshold = 3;
+threshold = 10;
 memoryStartingPoint  = 0;  
 visualStartingPoint = 0;
 
@@ -16,27 +20,50 @@ visualEvidence = zeros(nSub, nTrial, nSampVisual);
 fullEvidence = zeros(nSub, nTrial, nSampVisual);
 choices = zeros(nSub,nTrial);
 RT = zeros(nSub, nTrial);
-memoryDriftRates = visualEvidence;
+memoryDriftRates = memoryEvidence;
 visualDriftRates = visualEvidence;
+memoryPrecisions = memoryEvidence;
+visualPrecisions = visualEvidence;
 
 % initialize other variables
-memoryPrecision = 1/computeEntropy(cueLevel);
 framesTargetA = 0;
 framesTargetB = 0;
+memSampsTargetA = 0;
+memSampsTargetB = 0;
 
 % plot "trial traces"
-figure;
-hold on;
+%figure;
+%hold on;
 
 for subj=1:nSub
     for trial=1:nTrial
+        for i=1:nSampMemory
+            % generate memory sample
+              memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
+              % update target probability
+              if memorySample> 0
+                 memSampsTargetA = 1 + memSampsTargetA;
+              else
+                 memSampsTargetB = 1 + memSampsTargetB;
+              end
+              % compute precision-weighted drift rate
+              memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
+              memoryRetrievalPrecision = 1/computeEntropy(memProbTargetA);
+              memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + (1/computeEntropy(0.65)));
+
+              % store values
+              memoryPrecisions(subj, trial, i) = memoryRetrievalPrecision;
+              memoryDriftRates(subj, trial, i) = memoryDriftRate;
+
+              % accumulate evidence
+              if i == 1
+                 memoryEvidence(subj, trial, i) = randn(1)+memoryStartingPoint + memoryDriftRate*memorySample;
+             else
+                memoryEvidence(subj, trial, i) = memoryEvidence(subj, trial, i-1) + memoryDriftRate*memorySample;
+              end
+        end
+        
         for t=1:nSampVisual
-            for i=1:nSampMemory
-                % generate & accumulate memory samples
-                 memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(0.65)));
-                 memoryEvidence(subj, trial, i) = randn(1)*memoryStartingPoint + ... 
-                        cumsum(memoryDriftRate*(binornd(1,cueLevel)*2-1) + normrnd(0,1)); 
-            end
 
             % generate memory & visual samples during flicker stream
             if congruent
@@ -47,18 +74,13 @@ for subj=1:nSub
                 visualSample = -(binornd(1,coherenceLevel)*2-1) + normrnd(0,1);
             end
 
-             % add visual sample to visual evidence
+             % add samples to evidence matrices
              if t==1
                  visualEvidence(subj, trial, t) = visualSample;
+                 memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, nSampMemory) + memorySample;
              else
                   visualEvidence(subj, trial, t) = visualEvidence(subj, trial, t-1) + visualSample;
-             end
-
-             % add memory sample to memory evidnece
-             if t==1
-                memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, nSampMemory) + memorySample;
-             else
-                 memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, t-1) + memorySample;
+                  memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, t-1) + memorySample;
              end
 
              % update target counters
@@ -68,19 +90,29 @@ for subj=1:nSub
                 framesTargetB = 1 + framesTargetB;
             end
 
-            % update target probability
-             probTargetA = framesTargetA / (framesTargetA + framesTargetB);
+            if memorySample > 0 
+                memSampsTargetA = 1 + memSampsTargetA;
+            else
+                memSampsTargetA = 1 + memSampsTargetB;
+            end
 
-             % update visual precision
+            % update target probabilities
+             probTargetA = framesTargetA / (framesTargetA + framesTargetB);
+             memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
+
+             % update precisions
              visualPrecision = 1/computeEntropy(probTargetA);
+             memoryPrecision = 1/computeEntropy(memProbTargetA);
 
              % compute drift rates as relative evidence precisions
              memoryDriftRate = memoryPrecision / (visualPrecision + memoryPrecision);
              visualDriftRate = visualPrecision / (visualPrecision + memoryPrecision);
 
              % store values
-             memoryDriftRates(subj, trial, t) = memoryDriftRate;
+             memoryDriftRates(subj, trial, nSampMemory+t) = memoryDriftRate;
              visualDriftRates(subj, trial, t) = visualDriftRate;
+             memoryPrecisions(subj, trial, nSampMemory+t) = memoryPrecision;
+             visualPrecisions(subj, trial, t) = visualPrecision;
 
              % accumulate precision-weighted additive evidence
              if t==1
@@ -93,6 +125,9 @@ for subj=1:nSub
         
         % find point at which evidence crosses threshold
         boundaryIdx = find(abs(fullEvidence(subj,trial,:))>threshold, 1);
+        if isempty(boundaryIdx)
+            boundaryIdx = nSampVisual;
+        end
         RT(subj, trial) = boundaryIdx;
 
         % populate choice matrix accordingly
@@ -103,12 +138,12 @@ for subj=1:nSub
         end
 
           %plot
-          plot(squeeze(fullEvidence(subj,trial, :)));
-         drawnow;
+          %plot(squeeze(fullEvidence(subj,trial, :)));
+         %drawnow;
     end
 end
 
-outfile = sprintf('%.1fcue_%.1fcoh_%icong_%isubs_%itrials.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
+outfile = sprintf('results/%.1fcue_%.1fcoh_%icong_%isubs_%itrials.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
 save(outfile)
 end
 
