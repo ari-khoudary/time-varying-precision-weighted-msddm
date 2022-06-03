@@ -1,5 +1,4 @@
-function [choices, memoryEvidence, visualEvidence, fullEvidence, ... 
-    visualDriftRate, memoryDriftRate] = doSampling(cueLevel, coherenceLevel, congruent)
+function [choices, RT] = doSampling(cueLevel, coherenceLevel, congruent)
 
 % define sampling windows
 nSampMemory = (750+500)/50; %miliseconds allotted in the experiment divided by estimate of memory sampling rate
@@ -31,12 +30,10 @@ framesTargetB = 0;
 memSampsTargetA = 0;
 memSampsTargetB = 0;
 
-% plot "trial traces"
-%figure;
-%hold on;
-
+% run simulation
 for subj=1:nSub
     for trial=1:nTrial
+        % start with memory retrieval period
         for i=1:nSampMemory
             % generate memory sample
               memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
@@ -48,8 +45,12 @@ for subj=1:nSub
               end
               % compute precision-weighted drift rate
               memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
-              memoryRetrievalPrecision = 1/computeEntropy(memProbTargetA);
-              memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + (1/computeEntropy(0.65)));
+              if i == 1
+                  memoryRetrievalPrecision = 1/computeEntropy(cueLevel);
+              else
+                  memoryRetrievalPrecision = 1/computeEntropy(memProbTargetA);
+              end
+              memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + (1/computeEntropy(0.8)));
 
               % store values
               memoryPrecisions(subj, trial, i) = memoryRetrievalPrecision;
@@ -62,10 +63,11 @@ for subj=1:nSub
                 memoryEvidence(subj, trial, i) = memoryEvidence(subj, trial, i-1) + memoryDriftRate*memorySample;
               end
         end
-        
+
+        % then begin parallel visual & memory sampling
         for t=1:nSampVisual
 
-            % generate memory & visual samples during flicker stream
+            % generate memory & visual samples
             if congruent
                 memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
                 visualSample = (binornd(1,coherenceLevel)*2-1) + normrnd(0,1);
@@ -80,7 +82,7 @@ for subj=1:nSub
                  memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, nSampMemory) + memorySample;
              else
                   visualEvidence(subj, trial, t) = visualEvidence(subj, trial, t-1) + visualSample;
-                  memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, t-1) + memorySample;
+                  memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, nSampMemory+(t-1)) + memorySample;
              end
 
              % update target counters
@@ -101,7 +103,11 @@ for subj=1:nSub
              memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
 
              % update precisions
-             visualPrecision = 1/computeEntropy(probTargetA);
+             if t==1
+                 visualPrecision = 1/computeEntropy(0.65);
+             else
+                visualPrecision = 1/computeEntropy(probTargetA);
+             end
              memoryPrecision = 1/computeEntropy(memProbTargetA);
 
              % compute drift rates as relative evidence precisions
@@ -116,7 +122,7 @@ for subj=1:nSub
 
              % accumulate precision-weighted additive evidence
              if t==1
-                fullEvidence(subj, trial, t) = visualStartingPoint + memorySample*memoryDriftRate + visualSample*visualDriftRate;
+                fullEvidence(subj, trial, t) = randn(1)+visualStartingPoint + memorySample*memoryDriftRate + visualSample*visualDriftRate;
              else
                  fullEvidence(subj, trial, t) = cumsum(fullEvidence(subj, trial, t-1) + ...
                      memorySample*memoryDriftRate + visualSample*visualDriftRate);
@@ -136,10 +142,6 @@ for subj=1:nSub
         else
             choices(subj,trial) = 0;
         end
-
-          %plot
-          %plot(squeeze(fullEvidence(subj,trial, :)));
-         %drawnow;
     end
 end
 
