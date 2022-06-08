@@ -145,7 +145,7 @@ for subj=1:nSub
     end
 end
 
-outfile = sprintf('results/%.1fcue_%.1fcoh_%icong_%isubs_%itrials.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
+outfile = sprintf('results/%.2fcue_%.2fcoh_%icong_%isubs_%itrials.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
 save(outfile)
 end
 
