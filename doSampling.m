@@ -25,19 +25,21 @@ memoryPrecisions = memoryEvidence;
 visualPrecisions = visualEvidence;
 
 % initialize other variables
-framesTargetA = 0;
-framesTargetB = 0;
-memSampsTargetA = 0;
-memSampsTargetB = 0;
 betaX = 0:.01:1;
 
 % run simulation
 for subj=1:nSub
     for trial=1:nTrial
+        % reset all counters at the start of each trial
         alphaMem = 1;
         betaMem = 1;
         alphaVis = 1;
         betaVis = 1;
+        framesTargetA = 0;
+        framesTargetB = 0;
+        memSampsTargetA = 0;
+        memSampsTargetB = 0;
+
         % start with memory retrieval period
         for i=1:nSampMemory
             % generate memory sample
@@ -52,7 +54,7 @@ for subj=1:nSub
               % compute precision-weighted drift rate
               alphaMem = alphaMem + memSampsTargetA;
               betaMem = betaMem + memSampsTargetB;
-              memProbTargetA = betapdf(betaX, alphaMem, betaMem);
+              %memProbTargetA = betapdf(betaX, alphaMem, betaMem);
               memoryRetrievalPrecision = 1/betaVar(alphaMem, betaMem);
 
               if exist('anticipatedCoherence', 'var')
@@ -110,13 +112,13 @@ for subj=1:nSub
             % update memory probability
             alphaMem = alphaMem + memSampsTargetA;
             betaMem = betaMem + memSampsTargetB;
-            memProbTargetA = betapdf(betaX, alphaMem, betaMem);
+            %memProbTargetA = betapdf(betaX, alphaMem, betaMem);
             memoryPrecision = 1/betaVar(alphaMem, betaMem);
 
             % compute precision-weighted drift rate
             alphaVis = alphaVis + framesTargetA;
             betaVis = betaVis + framesTargetB;
-            probTargetA = betapdf(betaX, alphaVis, betaVis);
+            %probTargetA = betapdf(betaX, alphaVis, betaVis);
             visualPrecision = 1/betaVar(alphaVis, betaVis);
 
 
