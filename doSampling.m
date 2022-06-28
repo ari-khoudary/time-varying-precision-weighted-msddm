@@ -1,12 +1,12 @@
-function [choices, RT] = doSampling(cueLevel, coherenceLevel, congruent)
+function [choices, RT] = doSampling(cueLevel, coherenceLevel, congruent, anticipatedCoherence)
 
 % define sampling windows
 nSampMemory = (750+500)/50; %miliseconds allotted in the experiment divided by estimate of memory sampling rate
 nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the experiment
 
 % define number of subjects & trials
-nSub = 100;
-nTrial = 25;
+nSub = 1;
+nTrial = 10;
 
 % define sampling bounds
 threshold = 10;
@@ -29,29 +29,37 @@ framesTargetA = 0;
 framesTargetB = 0;
 memSampsTargetA = 0;
 memSampsTargetB = 0;
+betaX = 0:.01:1;
 
 % run simulation
 for subj=1:nSub
-    prior = beta(1,1);
     for trial=1:nTrial
+        alphaMem = 1;
+        betaMem = 1;
+        alphaVis = 1;
+        betaVis = 1;
         % start with memory retrieval period
         for i=1:nSampMemory
             % generate memory sample
               memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
-              % update target probability
+              % store outcome of sample
               if memorySample> 0
                  memSampsTargetA = 1 + memSampsTargetA;
               else
                   memSampsTargetB = 1 + memSampsTargetB;
               end
+
               % compute precision-weighted drift rate
-              memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
-              if i == 1
-                  memoryRetrievalPrecision = 1/computeEntropy(cueLevel);
+              alphaMem = alphaMem + memSampsTargetA;
+              betaMem = betaMem + memSampsTargetB;
+              memProbTargetA = betapdf(betaX, alphaMem, betaMem);
+              memoryRetrievalPrecision = 1/var(memProbTargetA);
+
+              if exist('anticipatedCoherence', 'var')
+                memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + (1/computeEntropy(anticipatedCoherence)));
               else
-                  memoryRetrievalPrecision = 1/computeEntropy(memProbTargetA);
+                memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + 1/var(betapdf(betaX, alphaVis, betaVis)));
               end
-              memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + (1/computeEntropy(0.8)));
 
               % store values
               memoryPrecisions(subj, trial, i) = memoryRetrievalPrecision;
@@ -99,17 +107,18 @@ for subj=1:nSub
                 memSampsTargetB = 1 + memSampsTargetB;
             end
 
-            % update target probabilities
-             probTargetA = framesTargetA / (framesTargetA + framesTargetB);
-             memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
+            % update memory probability
+            alphaMem = alphaMem + memSampsTargetA;
+            betaMem = betaMem + memSampsTargetB;
+            memProbTargetA = betapdf(betaX, alphaMem, betaMem);
+            memoryPrecision = 1/var(memProbTargetA);
 
-             % update precisions
-             if t==1
-                 visualPrecision = 1/computeEntropy(0.65);
-             else
-                visualPrecision = 1/computeEntropy(probTargetA);
-             end
-             memoryPrecision = 1/computeEntropy(memProbTargetA);
+            % compute precision-weighted drift rate
+            alphaVis = alphaVis + framesTargetA;
+            betaVis = betaVis + framesTargetB;
+            probTargetA = betapdf(betaX, alphaVis, betaVis);
+            visualPrecision = 1/var(probTargetA);
+
 
              % compute drift rates as relative evidence precisions
              memoryDriftRate = memoryPrecision / (visualPrecision + memoryPrecision);
@@ -146,7 +155,7 @@ for subj=1:nSub
     end
 end
 
-outfile = sprintf('results/%.2fcue_%.2fcoh_%icong_%isubs_%itrials.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
+outfile = sprintf('results/%.2fcue_%.2fcoh_%icong_%isubs_%itrials_bayesUpdate.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
 save(outfile)
 end
 
