@@ -1,16 +1,16 @@
 
-
-ssd = load('results/0.80cue_0.80coh_0cong_100subs_25trials.mat');
+ssd = load('results/0.80cue_0.80coh_0cong_1subs_10trials_0.80antCoh_bayesUpdate.mat');
 
 %%
 subj = 1;
-trial = 6;
+trial = 4;
 
 addX = NaN(ssd.nSampMemory,1);
 allEvidence = [squeeze(ssd.memoryEvidence(subj,trial,:));squeeze(ssd.visualEvidence(subj,trial,:));squeeze(ssd.fullEvidence(subj,trial,:))];
 
 figure; hold on;
 string = sprintf('%s', ssd.outfile);
+string = regexprep(string, '[\\\^\_]','\\$0');
 string2 = sprintf('subj=%i, trial=%i', subj, trial);
 title(string);
 subtitle(string2);

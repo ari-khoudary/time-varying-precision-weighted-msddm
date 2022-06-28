@@ -10,7 +10,7 @@ nTrial = 10;
 
 % define sampling bounds
 threshold = 10;
-memoryStartingPoint  = 0;  
+memoryStartingPoint = 0;  
 visualStartingPoint = 0;
 
 % create variables to store values
@@ -53,7 +53,7 @@ for subj=1:nSub
               alphaMem = alphaMem + memSampsTargetA;
               betaMem = betaMem + memSampsTargetB;
               memProbTargetA = betapdf(betaX, alphaMem, betaMem);
-              memoryRetrievalPrecision = 1/var(memProbTargetA);
+              memoryRetrievalPrecision = 1/betaVar(alphaMem, betaMem);
 
               if exist('anticipatedCoherence', 'var')
                 memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + (1/computeEntropy(anticipatedCoherence)));
@@ -111,13 +111,13 @@ for subj=1:nSub
             alphaMem = alphaMem + memSampsTargetA;
             betaMem = betaMem + memSampsTargetB;
             memProbTargetA = betapdf(betaX, alphaMem, betaMem);
-            memoryPrecision = 1/var(memProbTargetA);
+            memoryPrecision = 1/betaVar(alphaMem, betaMem);
 
             % compute precision-weighted drift rate
             alphaVis = alphaVis + framesTargetA;
             betaVis = betaVis + framesTargetB;
             probTargetA = betapdf(betaX, alphaVis, betaVis);
-            visualPrecision = 1/var(probTargetA);
+            visualPrecision = 1/betaVar(alphaVis, betaVis);
 
 
              % compute drift rates as relative evidence precisions
@@ -155,7 +155,11 @@ for subj=1:nSub
     end
 end
 
-outfile = sprintf('results/%.2fcue_%.2fcoh_%icong_%isubs_%itrials_bayesUpdate.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
+if exist('anticipatedCoherence', 'var')
+    outfile = sprintf('results/%.2fcue_%.2fcoh_%icong_%isubs_%itrials_%.2fantCoh_bayesUpdate.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial,anticipatedCoherence);
+else
+    outfile = sprintf('results/%.2fcue_%.2fcoh_%icong_%isubs_%itrials_0antCoh_bayesUpdate.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
+end
 save(outfile)
 end
 
