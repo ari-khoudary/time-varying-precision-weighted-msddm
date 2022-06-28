@@ -32,6 +32,7 @@ memSampsTargetB = 0;
 
 % run simulation
 for subj=1:nSub
+    prior = beta(1,1);
     for trial=1:nTrial
         % start with memory retrieval period
         for i=1:nSampMemory
@@ -41,7 +42,7 @@ for subj=1:nSub
               if memorySample> 0
                  memSampsTargetA = 1 + memSampsTargetA;
               else
-                 memSampsTargetB = 1 + memSampsTargetB;
+                  memSampsTargetB = 1 + memSampsTargetB;
               end
               % compute precision-weighted drift rate
               memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
@@ -95,7 +96,7 @@ for subj=1:nSub
             if memorySample > 0 
                 memSampsTargetA = 1 + memSampsTargetA;
             else
-                memSampsTargetA = 1 + memSampsTargetB;
+                memSampsTargetB = 1 + memSampsTargetB;
             end
 
             % update target probabilities
