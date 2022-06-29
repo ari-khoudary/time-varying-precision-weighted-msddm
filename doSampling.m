@@ -1,4 +1,4 @@
-function [choices, RT] = doSampling(cueLevel, coherenceLevel, congruent, anticipatedCoherence)
+function [choices, RT] = doSampling(cueLevel, anticipatedCoherence, coherenceLevel, congruent)
 
 % define sampling windows
 nSampMemory = (750+500)/50; %miliseconds allotted in the experiment divided by estimate of memory sampling rate
@@ -9,7 +9,7 @@ nSub = 1;
 nTrial = 10;
 
 % define sampling bounds
-threshold = 10;
+threshold = 50;
 memoryStartingPoint = 0;  
 visualStartingPoint = 0;
 
@@ -24,13 +24,9 @@ visualDriftRates = visualEvidence;
 memoryPrecisions = memoryEvidence;
 visualPrecisions = visualEvidence;
 
-% initialize other variables
-betaX = 0:.01:1;
-
-% run simulation
+%%%%%%%% run simulation %%%%%%%%
 for subj=1:nSub
     for trial=1:nTrial
-        % reset all counters at the start of each trial
         alphaMem = 1;
         betaMem = 1;
         alphaVis = 1;
@@ -42,9 +38,8 @@ for subj=1:nSub
 
         % start with memory retrieval period
         for i=1:nSampMemory
-            % generate memory sample
+            % generate & save memory sample
               memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
-              % store outcome of sample
               if memorySample> 0
                  memSampsTargetA = 1 + memSampsTargetA;
               else
@@ -54,17 +49,11 @@ for subj=1:nSub
               % compute precision-weighted drift rate
               alphaMem = alphaMem + memSampsTargetA;
               betaMem = betaMem + memSampsTargetB;
-              %memProbTargetA = betapdf(betaX, alphaMem, betaMem);
-              memoryRetrievalPrecision = 1/betaVar(alphaMem, betaMem);
-
-              if exist('anticipatedCoherence', 'var')
-                memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + (1/computeEntropy(anticipatedCoherence)));
-              else
-                memoryDriftRate = memoryRetrievalPrecision / (memoryRetrievalPrecision + 1/var(betapdf(betaX, alphaVis, betaVis)));
-              end
+              memoryPrecision = 1/betaVar(alphaMem, betaMem);
+              memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(anticipatedCoherence)));
 
               % store values
-              memoryPrecisions(subj, trial, i) = memoryRetrievalPrecision;
+              memoryPrecisions(subj, trial, i) = memoryPrecision;
               memoryDriftRates(subj, trial, i) = memoryDriftRate;
 
               % accumulate evidence
@@ -112,15 +101,12 @@ for subj=1:nSub
             % update memory probability
             alphaMem = alphaMem + memSampsTargetA;
             betaMem = betaMem + memSampsTargetB;
-            %memProbTargetA = betapdf(betaX, alphaMem, betaMem);
             memoryPrecision = 1/betaVar(alphaMem, betaMem);
 
             % compute precision-weighted drift rate
             alphaVis = alphaVis + framesTargetA;
             betaVis = betaVis + framesTargetB;
-            %probTargetA = betapdf(betaX, alphaVis, betaVis);
             visualPrecision = 1/betaVar(alphaVis, betaVis);
-
 
              % compute drift rates as relative evidence precisions
              memoryDriftRate = memoryPrecision / (visualPrecision + memoryPrecision);
@@ -157,12 +143,66 @@ for subj=1:nSub
     end
 end
 
-if exist('anticipatedCoherence', 'var')
-    outfile = sprintf('results/%.2fcue_%.2fcoh_%icong_%isubs_%itrials_%.2fantCoh_bayesUpdate.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial,anticipatedCoherence);
-else
-    outfile = sprintf('results/%.2fcue_%.2fcoh_%icong_%isubs_%itrials_0antCoh_bayesUpdate.mat', cueLevel, coherenceLevel, congruent, nSub, nTrial);
-end
+% save results
+outfile = sprintf('bayes_results/%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
 save(outfile)
+
+
+%%%%%%%% plot results %%%%%%%%
+% trial traces
+addX = NaN(nSampMemory,1);
+fig=figure; 
+for i=1:nTrial
+    subplot(2, 5, i)
+    hold on;
+    plot(squeeze(memoryEvidence(subj,i,:)), 'LineWidth',1.5)
+    plot([addX;squeeze(visualEvidence(subj, i, :))], 'LineWidth',1.5)
+    plot([addX;squeeze(fullEvidence(subj,i,:))], 'LineWidth',1.5)
+    plot([1,140],[0,0],'k')
+    xline(nSampMemory, 'k--')
+    string2 = sprintf('trial %i', i);
+    title(string2);
+end
+if congruent
+    string = sprintf('%.2f cue, %.2f anticipated coherence, %.2f actual coherence, congruent', cueLevel, anticipatedCoherence, coherenceLevel);
+else
+    string = sprintf('%.2f cue, %.2f anticipated coherence, %.2f actual coherence, incongruent', cueLevel, anticipatedCoherence, coherenceLevel);
+end
+sgtitle(string);
+h=legend({'memory','visual','combined'},'location','southeast', 'FontSize',8, 'Orientation', 'horizontal');
+set(h, 'Position', [0.55 0.48 0.35 0.025]);
+outfig = char(regexp(outfile, 'b.*cong', 'match'));
+plots=axes(fig, 'visible', 'off');
+plots.XLabel.Visible='on';
+plots.YLabel.Visible='on';
+plots.Title.Visible='on';
+xlabel(plots, 'time (a.u.)');
+ylabel(plots, 'evidence (a.u.)');
+saveas(gcf, [outfig '_traces.png'])
+
+% drifts
+fig=figure; 
+for i=1:trial
+    subplot(2, 5, i)
+    hold on;
+    plot(squeeze(memoryDriftRates(subj,i,:)), 'LineWidth',1.5)
+    plot([addX;squeeze(visualDriftRates(subj, i, :))], 'LineWidth',1.5)
+    plot([1,140],[0,0],'k')
+    xline(nSampMemory, 'k--')
+    string2 = sprintf('trial %i', i);
+    title(string2);
+end
+h=legend({'memory','visual'},'location','south', 'Orientation','horizontal');
+set(h, 'Position', [0.65 0.48 0.25 0.025]);
+sgtitle(string);
+plots=axes(fig, 'visible', 'off');
+plots.XLabel.Visible='on';
+plots.YLabel.Visible='on';
+plots.Title.Visible='on';
+xlabel(plots, 'time (a.u.)');
+ylabel(plots, 'drift rate (a.u.)');
+saveas(gcf, [outfig '_drifts.png'])
+
 end
 
 
