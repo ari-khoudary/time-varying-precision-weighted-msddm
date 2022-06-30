@@ -1,15 +1,17 @@
 function [choices, RT] = doSampling(cueLevel, anticipatedCoherence, coherenceLevel, congruent)
 
+% simulates an ideal observer in a cued perceptual decision task
+
 % define sampling windows
 nSampMemory = (750+500)/50; %miliseconds allotted in the experiment divided by estimate of memory sampling rate
 nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the experiment
 
 % define number of subjects & trials
 nSub = 1;
-nTrial = 10;
+nTrial = 5000;
 
 % define sampling bounds
-threshold = 50;
+threshold = 25;
 memoryStartingPoint = 0;  
 visualStartingPoint = 0;
 
@@ -147,12 +149,23 @@ end
 outfile = sprintf('bayes_results/%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
 save(outfile)
 
+% write csv with choices & RTs so i can plot those in R
+accuracy = choices';
+RT = RT';
+cueLevel = repmat(cueLevel, [nTrial 1]);
+anticipatedCoherence = repmat(anticipatedCoherence, [nTrial 1]);
+coherenceLevel = repmat(coherenceLevel, [nTrial 1]);
+congruent = repmat(congruent, [nTrial 1]);
+behav_csv = table(accuracy, RT, cueLevel, anticipatedCoherence, coherenceLevel, congruent);
+filename = ['bayes_results/behav_csv/' char(extractBetween(outfile, '/', '.mat')) '.csv'];
+writetable(behav_csv, filename);
+
 
 %%%%%%%% plot results %%%%%%%%
 % trial traces
 addX = NaN(nSampMemory,1);
 fig=figure; 
-for i=1:nTrial
+for i=1:10
     subplot(2, 5, i)
     hold on;
     plot(squeeze(memoryEvidence(subj,i,:)), 'LineWidth',1.5)
@@ -169,7 +182,7 @@ else
     string = sprintf('%.2f cue, %.2f anticipated coherence, %.2f actual coherence, incongruent', cueLevel, anticipatedCoherence, coherenceLevel);
 end
 sgtitle(string);
-h=legend({'memory','visual','combined'},'location','southeast', 'FontSize',8, 'Orientation', 'horizontal');
+h=legend({'memory','visual','combined'},'FontSize',8, 'Orientation', 'horizontal');
 set(h, 'Position', [0.55 0.48 0.35 0.025]);
 outfig = char(regexp(outfile, 'b.*cong', 'match'));
 plots=axes(fig, 'visible', 'off');
@@ -179,20 +192,20 @@ plots.Title.Visible='on';
 xlabel(plots, 'time (a.u.)');
 ylabel(plots, 'evidence (a.u.)');
 saveas(gcf, [outfig '_traces.png'])
-
+ 
 % drifts
 fig=figure; 
-for i=1:trial
-    subplot(2, 5, i)
+for j=1:10
+    subplot(2, 5, j)
     hold on;
-    plot(squeeze(memoryDriftRates(subj,i,:)), 'LineWidth',1.5)
-    plot([addX;squeeze(visualDriftRates(subj, i, :))], 'LineWidth',1.5)
+    plot(squeeze(memoryDriftRates(subj,j,:)), 'LineWidth',1.5)
+    plot([addX;squeeze(visualDriftRates(subj, j, :))], 'LineWidth',1.5)
     plot([1,140],[0,0],'k')
     xline(nSampMemory, 'k--')
     string2 = sprintf('trial %i', i);
     title(string2);
 end
-h=legend({'memory','visual'},'location','south', 'Orientation','horizontal');
+h=legend({'memory','visual'},'Orientation','horizontal');
 set(h, 'Position', [0.65 0.48 0.25 0.025]);
 sgtitle(string);
 plots=axes(fig, 'visible', 'off');
