@@ -1,7 +1,61 @@
-function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, save, makePlot)
+function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, saveFiles, plotResults)
 
-% simulates an ideal observer in a cued perceptual decision task
-% make csv output & plots optional arguments
+% multi-stage, multi-source drift diffusion model. drift rate varies
+% dynamically as the relative precision of each evidence stream, updated
+% after each sample.
+
+% INPUTS
+% order [1,2]: determines whether the precision will be computed in a first- or
+% second-order manner. first-order precision=inverse entropy of evidence
+% stream; second-order precision=inverse variance of the distribution over
+% the data-generating parameter
+
+% cueLevel [0:1]: sets the precision of memory evidence
+
+% anticipatedCoherence [0:1]: sets the observer's expectation about the
+% precision of upcoming visual evidence
+
+% coherenceLevel [0:1]: sets the precision of visual evidence
+
+% congruent [0,1]: determines whether visual evidence is congruent
+% with memory evidence
+
+% saveFiles [0,1]: turns off/on saving of .mat files, exporting of
+% behavioral .csv files, and saving of figures
+
+% plotResults [0,1]: turns off/on automatic plotting of evidence traces
+% and drift rates for the first 10 trials of the simulation
+
+% OUTPUTS
+% choices: 1xnTrial array of optimal choices for the above-defined task
+% settings
+
+% RT: 1xnTrial array of reaction times (arbitrary units) for those choices
+
+% MODIFIABLE SIMULATION SETTINGS
+% nSampMemory [1:Inf]: number of pre-cue memory samples / duration of memory
+% sampling period
+
+% nSampVisual [1:Inf]: number of visual samples / duration of parallel sampling
+% period
+
+% nSub [1:Inf]: number of subjects. currently we do not model any individual
+% differences so this parameter is irrelevant
+
+% nTrial [1:Inf]: number of trials. if auto-plotting of results is desired, a
+% minimum of 10 trials is needed
+
+% threshold [1:Inf]: bounds of accumulator
+
+% memory or visual StartingPoint [0:Inf]: intercept of each evidence source's
+% accumulator
+
+% memoryThinning [1:Inf]: how much to slow the memory sample rate relative to
+% visual sampling rate during parallel sampling. memoryThinning=1 sets
+% memory sample rate equal to visual sampling rate (via mod())
+
+% Code written by Maria Khoudary with help from Aaron Bornstein & Megan
+% Peters
 
 %% Initialize variables
 % define sampling windows
@@ -10,12 +64,13 @@ nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the 
 
 % define number of subjects & trials
 nSub = 1;
-nTrial = 10;
+nTrial = 5000;
 
-% define sampling bounds
+% define DDM parameters
 threshold = 25;
 memoryStartingPoint = 0;  
 visualStartingPoint = 0;
+memoryThinning = 4;
 
 % create variables to store values
 memoryEvidence = zeros(nSub, nTrial, nSampMemory+nSampVisual); 
@@ -85,12 +140,12 @@ for subj=1:nSub
 
             % generate memory & visual samples
             if congruent
-                if ~mod(t, 4) % only draw a new memory sample every 4 timepoints
+                if ~mod(t, memoryThinning) % only draw a new memory sample every timepoint set by memoryThinning
                     memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
                 end
                 visualSample = (binornd(1,coherenceLevel)*2-1) + normrnd(0,1);
             else
-                if ~mod(t,4)
+                if ~mod(t,memoryThinning)
                     memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
                 end
                 visualSample = -(binornd(1,coherenceLevel)*2-1) + normrnd(0,1);
@@ -112,7 +167,7 @@ for subj=1:nSub
                 framesTargetB = 1 + framesTargetB;
             end
             
-            if ~mod(t,4)
+            if ~mod(t,memoryThinning)
                 if memorySample > 0 
                     memSampsTargetA = 1 + memSampsTargetA;
                 else
@@ -122,7 +177,7 @@ for subj=1:nSub
 
             % update memory probability
             if order ==  2
-                if ~mod(t,4)
+                if ~mod(t,memoryThinning)
                     alphaMem = alphaMem + memSampsTargetA;
                     betaMem = betaMem + memSampsTargetB;
                     memoryPrecision = 1/betaVar(alphaMem, betaMem);
@@ -134,7 +189,7 @@ for subj=1:nSub
 
             else % first-order analogs
                  % memory probability & precision
-                 if ~mod(t,4)
+                 if ~mod(t,memoryThinning)
                     memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
                     memoryPrecision = 1/computeEntropy(memProbTargetA);
                  end
@@ -192,7 +247,7 @@ for subj=1:nSub
 end
 
 % save results
-if save
+if saveFiles
     if order == 2
         outfile = sprintf('bayes_results/%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
     else
@@ -218,7 +273,7 @@ end
 
 %% Plot results
 % trial traces
-if makePlot
+if plotResults
     addX = NaN(nSampMemory,1);
     fig=figure; 
     for a=1:10
@@ -251,7 +306,7 @@ if makePlot
     plots.Title.Visible='on';
     xlabel(plots, 'time (a.u.)');
     ylabel(plots, 'evidence (a.u.)');
-    if save
+    if saveFiles
         outfig = char(regexp(outfile, 'b.*cong', 'match'));
         saveas(gcf, [outfig '_traces.png']);
     end
@@ -281,7 +336,7 @@ if makePlot
     plots.Title.Visible='on';
     xlabel(plots, 'time (a.u.)');
     ylabel(plots, 'drift rate (a.u.)');
-    if save
+    if saveFiles
         saveas(gcf, [outfig '_drifts.png']);
     end
 end
