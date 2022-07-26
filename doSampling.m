@@ -1,4 +1,6 @@
-function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, saveFiles, plotResults)
+function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, ...
+    altBeta, threshold, memoryThinning, v, ...
+    saveFiles, plotResults)
 
 % multi-stage, multi-source drift diffusion model. drift rate varies
 % dynamically as the relative precision of each evidence stream, updated
@@ -67,12 +69,13 @@ nSub = 1;
 nTrial = 5000;
 
 % define DDM parameters
-threshold = 25;
+%threshold = threshold;
 memoryStartingPoint = 0;  
 visualStartingPoint = 0;
-memoryThinning = 4;
+%memoryThinning = 4;
 
 % create variables to store values
+ghostEvidence = zeros(nSub, nTrial,v);
 memoryEvidence = zeros(nSub, nTrial, nSampMemory+nSampVisual); 
 visualEvidence = zeros(nSub, nTrial, nSampVisual);
 fullEvidence = zeros(nSub, nTrial, nSampVisual);
@@ -110,7 +113,8 @@ for subj=1:nSub
               if order==2
                 alphaMem = alphaMem + memSampsTargetA;
                 betaMem = betaMem + memSampsTargetB;
-                memoryPrecision = 1/betaVar(alphaMem, betaMem);
+                memBetaMean = alphaMem / v;
+                memoryPrecision = 1/altBetaVar(memBetaMean, v);
                 memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(anticipatedCoherence)));
               
               else % first-order precision
@@ -131,9 +135,22 @@ for subj=1:nSub
               if i == 1
                  memoryEvidence(subj, trial, i) = randn(1)+memoryStartingPoint + memoryDriftRate*memorySample;
              else
-                memoryEvidence(subj, trial, i) = memoryEvidence(subj, trial, i-1) + memoryDriftRate*memorySample;
+                memoryEvidence(subj, trial, i) = cumsum(memoryEvidence(subj, trial, i-1)) + memoryDriftRate*memorySample;
               end
         end
+
+        % attempt to make a prior for the first-order model
+        if order == 1
+            for g=1:v
+                ghostSample = (binornd(1,anticipatedCoherence)*2-1) + normrnd(0,1);
+                if g == 1
+                    ghostEvidence(subj, trial, g) = randn(1)+ghostSample;
+                else
+                    ghostEvidence(subj, trial, g) = cumsum(ghostEvidence(subj, trial, g-1)) + ghostSample;
+                end
+            end
+        end
+
 
         % then begin parallel visual & memory sampling
         for t=1:nSampVisual
@@ -180,12 +197,14 @@ for subj=1:nSub
                 if ~mod(t,memoryThinning)
                     alphaMem = alphaMem + memSampsTargetA;
                     betaMem = betaMem + memSampsTargetB;
-                    memoryPrecision = 1/betaVar(alphaMem, betaMem);
+                    memBetaMean = alphaMem/v;
+                    memoryPrecision = 1/altBetaVar(memBetaMean, v);
                 end
             % and precision-weighted drift rate
                 alphaVis = alphaVis + framesTargetA;
                 betaVis = betaVis + framesTargetB;
-                visualPrecision = 1/betaVar(alphaVis, betaVis);
+                visBetaMean = alphaVis / v;
+                visualPrecision = 1/altBetaVar(visBetaMean, v);
 
             else % first-order analogs
                  % memory probability & precision
@@ -197,7 +216,7 @@ for subj=1:nSub
                  % vision probability & precision
                  probTargetA = framesTargetA / (framesTargetA + framesTargetB);
                  if t==1
-                 visualPrecision = 1/computeEntropy(0.65);
+                 visualPrecision = 1/computeEntropy(ghostEvidence(subj, trial, v));
                 else
                 visualPrecision = 1/computeEntropy(probTargetA);
                  end
