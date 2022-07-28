@@ -66,7 +66,7 @@ nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the 
 
 % define number of subjects & trials
 nSub = 1;
-nTrial = 5000;
+nTrial = 100;
 
 % define DDM parameters
 %threshold = threshold;
@@ -75,7 +75,6 @@ visualStartingPoint = 0;
 %memoryThinning = 4;
 
 % create variables to store values
-ghostEvidence = zeros(nSub, nTrial,v);
 memoryEvidence = zeros(nSub, nTrial, nSampMemory+nSampVisual); 
 visualEvidence = zeros(nSub, nTrial, nSampVisual);
 fullEvidence = zeros(nSub, nTrial, nSampVisual);
@@ -88,6 +87,12 @@ visualPrecisions = visualEvidence;
 
 %% Run simulation
 for subj=1:nSub
+        % make an array of "ghost samples" that we'll use as the prior for
+        % first-order visual sampling
+        if order == 1
+            ghostSamples = (binornd(1, anticipatedCoherence, [nSub, nTrial, v])) + normrnd(0,1, [nSub, nTrial, v]);
+            %ghostEvidence = cumsum(ghostSamples);
+        end
     for trial=1:nTrial
         % reset counters on each trial
         alphaMem = 1;
@@ -113,8 +118,12 @@ for subj=1:nSub
               if order==2
                 alphaMem = alphaMem + memSampsTargetA;
                 betaMem = betaMem + memSampsTargetB;
-                memBetaMean = alphaMem / v;
-                memoryPrecision = 1/altBetaVar(memBetaMean, v);
+                if altBeta
+                    memBetaMean = alphaMem / v;
+                    memoryPrecision = 1/altBetaVar(memBetaMean, v);
+                else
+                    memoryPrecision = 1/betaVar(alphaMem, betaMem);
+                end
                 memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(anticipatedCoherence)));
               
               else % first-order precision
@@ -135,22 +144,9 @@ for subj=1:nSub
               if i == 1
                  memoryEvidence(subj, trial, i) = randn(1)+memoryStartingPoint + memoryDriftRate*memorySample;
              else
-                memoryEvidence(subj, trial, i) = cumsum(memoryEvidence(subj, trial, i-1)) + memoryDriftRate*memorySample;
+                memoryEvidence(subj, trial, i) = memoryEvidence(subj, trial, i-1) + memoryDriftRate*memorySample;
               end
         end
-
-        % attempt to make a prior for the first-order model
-        if order == 1
-            for g=1:v
-                ghostSample = (binornd(1,anticipatedCoherence)*2-1) + normrnd(0,1);
-                if g == 1
-                    ghostEvidence(subj, trial, g) = randn(1)+ghostSample;
-                else
-                    ghostEvidence(subj, trial, g) = cumsum(ghostEvidence(subj, trial, g-1)) + ghostSample;
-                end
-            end
-        end
-
 
         % then begin parallel visual & memory sampling
         for t=1:nSampVisual
@@ -197,14 +193,22 @@ for subj=1:nSub
                 if ~mod(t,memoryThinning)
                     alphaMem = alphaMem + memSampsTargetA;
                     betaMem = betaMem + memSampsTargetB;
-                    memBetaMean = alphaMem/v;
-                    memoryPrecision = 1/altBetaVar(memBetaMean, v);
+                    if altBeta
+                        memBetaMean = alphaMem/v;
+                        memoryPrecision = 1/altBetaVar(memBetaMean, v);
+                    else
+                        memoryPrecision = 1/betaVar(alphaMem, betaMem);
+                    end
                 end
             % and precision-weighted drift rate
                 alphaVis = alphaVis + framesTargetA;
                 betaVis = betaVis + framesTargetB;
-                visBetaMean = alphaVis / v;
-                visualPrecision = 1/altBetaVar(visBetaMean, v);
+                if altBeta
+                    visBetaMean = alphaVis / v;
+                    visualPrecision = 1/altBetaVar(visBetaMean, v);
+                else
+                    visualPrecision = 1/betaVar(alphaVis, betaVis);
+                end
 
             else % first-order analogs
                  % memory probability & precision
@@ -214,11 +218,12 @@ for subj=1:nSub
                  end
                  
                  % vision probability & precision
-                 probTargetA = framesTargetA / (framesTargetA + framesTargetB);
+                 ghostProbTargetA = mean(ghostSamples(subj, trial, :) > 0);
+                 probTargetA = ghostProbTargetA + (framesTargetA / (framesTargetA + framesTargetB));
                  if t==1
-                 visualPrecision = 1/computeEntropy(ghostEvidence(subj, trial, v));
+                    visualPrecision = 1/computeEntropy(ghostProbTargetA);
                 else
-                visualPrecision = 1/computeEntropy(probTargetA);
+                    visualPrecision = 1/computeEntropy(probTargetA);
                  end
             end
 
@@ -236,8 +241,8 @@ for subj=1:nSub
              if t==1
                 fullEvidence(subj, trial, t) = randn(1)+visualStartingPoint + memorySample*memoryDriftRate + visualSample*visualDriftRate;
              else
-                 fullEvidence(subj, trial, t) = cumsum(fullEvidence(subj, trial, t-1) + ...
-                     memorySample*memoryDriftRate + visualSample*visualDriftRate);
+                 fullEvidence(subj, trial, t) = fullEvidence(subj, trial, t-1) + ...
+                     memorySample*memoryDriftRate + visualSample*visualDriftRate;
              end
         end
         
@@ -277,11 +282,16 @@ if saveFiles
 % write csv with choices & RTs so i can plot those in R
     accuracy = choices';
     RT = RT';
+    order = repmat(order, [nTrial 1]);
     cueLevel = repmat(cueLevel, [nTrial 1]);
     anticipatedCoherence = repmat(anticipatedCoherence, [nTrial 1]);
     coherenceLevel = repmat(coherenceLevel, [nTrial 1]);
     congruent = repmat(congruent, [nTrial 1]);
-    behav_csv = table(accuracy, RT, cueLevel, anticipatedCoherence, coherenceLevel, congruent);
+    threshold = repmat(threshold, [nTrial 1]);
+    memoryThinning = repmat(memoryThinning, [nTrial 1]);
+    altBeta = repmat(altBeta, [nTrial 1]);
+    v = repmat(v, [nTrial 1]);
+    behav_csv = table(accuracy, RT, order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, altBeta, v);
     if order == 2 
         filename = ['bayes_results/behav_csv/' char(extractBetween(outfile, '/', '.mat')) '.csv'];
     else
