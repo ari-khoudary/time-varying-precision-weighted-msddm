@@ -22,6 +22,18 @@ function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coher
 % congruent [0,1]: determines whether visual evidence is congruent
 % with memory evidence
 
+% altBeta [0,1]: determines whether to use the alternative parameterization
+% of the Beta distribution in terms of mean (mu) and sample size (v) to
+% perform the probability updating
+
+% threshold [1:Inf]: bounds of accumulator
+
+% memoryThinning [1:Inf]: how much to slow the memory sample rate relative to
+% visual sampling rate during parallel sampling. memoryThinning=1 sets
+% memory sample rate equal to visual sampling rate (via mod())
+
+% v [1:Inf]: scales the size of the visual prior for both models
+
 % saveFiles [0,1]: turns off/on saving of .mat files, exporting of
 % behavioral .csv files, and saving of figures
 
@@ -47,14 +59,8 @@ function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coher
 % nTrial [1:Inf]: number of trials. if auto-plotting of results is desired, a
 % minimum of 10 trials is needed
 
-% threshold [1:Inf]: bounds of accumulator
-
 % memory or visual StartingPoint [0:Inf]: intercept of each evidence source's
 % accumulator
-
-% memoryThinning [1:Inf]: how much to slow the memory sample rate relative to
-% visual sampling rate during parallel sampling. memoryThinning=1 sets
-% memory sample rate equal to visual sampling rate (via mod())
 
 % Code written by Maria Khoudary with help from Aaron Bornstein & Megan
 % Peters
@@ -66,7 +72,7 @@ nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the 
 
 % define number of subjects & trials
 nSub = 1;
-nTrial = 100;
+nTrial = 10;
 
 % define DDM parameters
 %threshold = threshold;
@@ -90,8 +96,7 @@ for subj=1:nSub
         % make an array of "ghost samples" that we'll use as the prior for
         % first-order visual sampling
         if order == 1
-            ghostSamples = (binornd(1, anticipatedCoherence, [nSub, nTrial, v])) + normrnd(0,1, [nSub, nTrial, v]);
-            %ghostEvidence = cumsum(ghostSamples);
+            ghostSamples = (binornd(1, anticipatedCoherence, [nSub, nTrial, v])*2-1) + normrnd(0,1, [nSub, nTrial, v]);
         end
     for trial=1:nTrial
         % reset counters on each trial
@@ -124,7 +129,6 @@ for subj=1:nSub
                 else
                     memoryPrecision = 1/betaVar(alphaMem, betaMem);
                 end
-                memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(anticipatedCoherence)));
               
               else % first-order precision
                 memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
@@ -133,8 +137,9 @@ for subj=1:nSub
                 else
                   memoryPrecision = 1/computeEntropy(memProbTargetA);
                 end
-              memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(anticipatedCoherence)));
               end
+              
+              memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(anticipatedCoherence)));
 
               % store values
               memoryPrecisions(subj, trial, i) = memoryPrecision;
@@ -219,7 +224,7 @@ for subj=1:nSub
                  
                  % vision probability & precision
                  ghostProbTargetA = mean(ghostSamples(subj, trial, :) > 0);
-                 probTargetA = ghostProbTargetA + (framesTargetA / (framesTargetA + framesTargetB));
+                 probTargetA = (ghostProbTargetA + framesTargetA) / (v + framesTargetA + framesTargetB);
                  if t==1
                     visualPrecision = 1/computeEntropy(ghostProbTargetA);
                 else
@@ -270,12 +275,12 @@ for subj=1:nSub
     end
 end
 
-% save results
+%% save results
 if saveFiles
-    if order == 2
-        outfile = sprintf('bayes_results/%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
+    if order == 1
+        outfile = sprintf('results/first-order/workspace_files/%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin_%iv_%ialtBeta_%itrials.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, v, altBeta, nTrial);
     else
-        outfile = sprintf('entropy_results/%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
+        outfile = sprintf('results/second-order/workspace_files/%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin_%iv_%ialtBeta_%itrials.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, v, altBeta, nTrial);
     end
     save(outfile)
 
@@ -287,22 +292,28 @@ if saveFiles
     anticipatedCoherence = repmat(anticipatedCoherence, [nTrial 1]);
     coherenceLevel = repmat(coherenceLevel, [nTrial 1]);
     congruent = repmat(congruent, [nTrial 1]);
+    altBeta = repmat(altBeta, [nTrial 1]);
     threshold = repmat(threshold, [nTrial 1]);
     memoryThinning = repmat(memoryThinning, [nTrial 1]);
-    altBeta = repmat(altBeta, [nTrial 1]);
     v = repmat(v, [nTrial 1]);
     behav_csv = table(accuracy, RT, order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, altBeta, v);
-    if order == 2 
-        filename = ['bayes_results/behav_csv/' char(extractBetween(outfile, '/', '.mat')) '.csv'];
+    if order == 1
+        filename = ['results/first-order/behav_csv/' char(extractBetween(outfile, 'files/', '.mat')) '.csv'];
     else
-        filename = ['entropy_results/behav_csv/' char(extractBetween(outfile, '/', '.mat')) '.csv'];
+        filename = ['results/second-order/behav_csv/' char(extractBetween(outfile, 'files/', '.mat')) '.csv'];
     end
     writetable(behav_csv, filename);
 end
-
 %% Plot results
 % trial traces
 if plotResults
+    if saveFiles
+            cueLevel = unique(cueLevel);
+            anticipatedCoherence = unique(anticipatedCoherence);
+            coherenceLevel = unique(coherenceLevel);
+            threshold = unique(threshold);
+            order = unique(order);
+    end
     addX = NaN(nSampMemory,1);
     fig=figure; 
     for a=1:10
