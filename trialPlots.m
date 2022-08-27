@@ -1,12 +1,14 @@
 %% specify configuration & load in file
-dir = 'bayes_results/';
+dir = 'results/power_check/second-order/workspace_files/';
 cueLevel = 0.80;
 anticipatedCoherence = 0.50;
-coherenceLevel = 0.65;
-congruent = 0;
+coherenceLevel = 0.50;
+congruent = 1;
+threshold = 25;
+thinning = 4;
 trials=1:10;
 
-infile = sprintf([dir '%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat'], cueLevel, anticipatedCoherence, coherenceLevel, congruent);
+infile = sprintf([dir '%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin.mat'], cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, thinning);
 load(infile);
 addX = NaN(nSampMemory,1);
 
@@ -16,9 +18,9 @@ counter=1;
 for a=trials
     subplot(2, 5, counter)
     hold on;
-    plot(squeeze(memoryEvidence(subj,a,:)), 'LineWidth',1.5)
-    plot([addX;squeeze(visualEvidence(subj, a, :))], 'LineWidth',1.5)
-    plot([addX;squeeze(fullEvidence(subj,a,:))], 'LineWidth',1.5)
+    plot(squeeze(memoryEvidence(subj,a,:)), 'LineWidth',2)
+    plot([addX;squeeze(visualEvidence(subj, a, :))], 'LineWidth',2)
+    plot([addX;squeeze(fullEvidence(subj,a,:))], 'LineWidth',3)
     plot([1,140],[0,0],'k')
     xline(nSampMemory, 'k--')
     yline([threshold -threshold])
