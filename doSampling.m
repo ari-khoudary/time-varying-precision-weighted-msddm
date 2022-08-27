@@ -1,8 +1,8 @@
 function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, ...
-    altBeta, threshold, memoryThinning, v, ...
+    threshold, memoryThinning, v, ...
     saveFiles, plotResults)
 
-% multi-stage, multi-source drift diffusion model. drift rate varies
+% multi-stage, multi-source sequential sampling model. sample weights vary
 % dynamically as the relative precision of each evidence stream, updated
 % after each sample.
 
@@ -10,7 +10,8 @@ function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coher
 % order [1,2]: determines whether the precision will be computed in a first- or
 % second-order manner. first-order precision=inverse entropy of evidence
 % stream; second-order precision=inverse variance of the distribution over
-% the data-generating parameter
+% the data-generating parameter. CCN 2022 results use the second-order
+% model only
 
 % cueLevel [0:1]: sets the precision of memory evidence
 
@@ -22,17 +23,15 @@ function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coher
 % congruent [0,1]: determines whether visual evidence is congruent
 % with memory evidence
 
-% altBeta [0,1]: determines whether to use the alternative parameterization
-% of the Beta distribution in terms of mean (mu) and sample size (v) to
-% perform the probability updating
-
 % threshold [1:Inf]: bounds of accumulator
 
 % memoryThinning [1:Inf]: how much to slow the memory sample rate relative to
 % visual sampling rate during parallel sampling. memoryThinning=1 sets
 % memory sample rate equal to visual sampling rate (via mod())
 
-% v [1:Inf]: scales the size of the visual prior for both models
+% v [1:Inf]: scales the size of the visual prior for the first order model,
+% will be updated soon to also scale the size of the visual prior for the
+% second order model. all CCN 2022 results were generated with v=0
 
 % saveFiles [0,1]: turns off/on saving of .mat files, exporting of
 % behavioral .csv files, and saving of figures
@@ -62,7 +61,7 @@ function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coher
 % memory or visual StartingPoint [0:Inf]: intercept of each evidence source's
 % accumulator
 
-% Code written by Maria Khoudary with help from Aaron Bornstein & Megan
+% Code written by Ari Khoudary with help from Aaron Bornstein & Megan
 % Peters
 
 %% Initialize variables
@@ -71,14 +70,12 @@ nSampMemory = (750+500)/125; %miliseconds allotted in the experiment divided by 
 nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the experiment
 
 % define number of subjects & trials
-nSub = 1;
-nTrial = 10;
+nSub = 50;
+nTrial = 25;
 
 % define DDM parameters
-%threshold = threshold;
 memoryStartingPoint = 0;  
 visualStartingPoint = 0;
-%memoryThinning = 4;
 
 % create variables to store values
 memoryEvidence = zeros(nSub, nTrial, nSampMemory+nSampVisual); 
@@ -90,14 +87,15 @@ memoryDriftRates = memoryEvidence;
 visualDriftRates = visualEvidence;
 memoryPrecisions = memoryEvidence;
 visualPrecisions = visualEvidence;
+memoryAlphas = memoryEvidence;
+memoryBetas = memoryEvidence;
+visualAlphas = visualEvidence;
+visualBetas = visualEvidence;
 
 %% Run simulation
 for subj=1:nSub
-        % make an array of "ghost samples" that we'll use as the prior for
-        % first-order visual sampling
-        if order == 1
-            ghostSamples = (binornd(1, anticipatedCoherence, [nSub, nTrial, v])*2-1) + normrnd(0,1, [nSub, nTrial, v]);
-        end
+        % make an array of "ghost samples" that functions as the visual prior
+         ghostSamples = (binornd(1, anticipatedCoherence, [nSub, nTrial, v])*2-1) + normrnd(0,1, [nSub, nTrial, v]);
     for trial=1:nTrial
         % reset counters on each trial
         alphaMem = 1;
@@ -109,7 +107,7 @@ for subj=1:nSub
         memSampsTargetA = 0;
         memSampsTargetB = 0;
 
-        % start with memory retrieval period
+        % anticipatory memory sampling
         for i=1:nSampMemory
             % generate & save memory sample
               memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
@@ -123,12 +121,9 @@ for subj=1:nSub
               if order==2
                 alphaMem = alphaMem + memSampsTargetA;
                 betaMem = betaMem + memSampsTargetB;
-                if altBeta
-                    memBetaMean = alphaMem / v;
-                    memoryPrecision = 1/altBetaVar(memBetaMean, v);
-                else
-                    memoryPrecision = 1/betaVar(alphaMem, betaMem);
-                end
+                memoryAlphas(subj, trial, i) = alphaMem;
+                memoryBetas(subj, trial, i) = betaMem;
+                memoryPrecision = 1/betaVar(alphaMem, betaMem);
               
               else % first-order precision
                 memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
@@ -198,22 +193,16 @@ for subj=1:nSub
                 if ~mod(t,memoryThinning)
                     alphaMem = alphaMem + memSampsTargetA;
                     betaMem = betaMem + memSampsTargetB;
-                    if altBeta
-                        memBetaMean = alphaMem/v;
-                        memoryPrecision = 1/altBetaVar(memBetaMean, v);
-                    else
-                        memoryPrecision = 1/betaVar(alphaMem, betaMem);
-                    end
+                    memoryAlphas(subj, trial, nSampMemory+t) = alphaMem;
+                    memoryBetas(subj, trial, nSampMemory+t) = betaMem;
+                    memoryPrecision = 1/betaVar(alphaMem, betaMem);
                 end
             % and precision-weighted drift rate
                 alphaVis = alphaVis + framesTargetA;
                 betaVis = betaVis + framesTargetB;
-                if altBeta
-                    visBetaMean = alphaVis / v;
-                    visualPrecision = 1/altBetaVar(visBetaMean, v);
-                else
-                    visualPrecision = 1/betaVar(alphaVis, betaVis);
-                end
+                visualAlphas(subj, trial, t) = alphaVis;
+                visualBetas(subj, trial, t) = betaVis;
+                visualPrecision = 1/betaVar(alphaVis, betaVis);
 
             else % first-order analogs
                  % memory probability & precision
@@ -242,7 +231,7 @@ for subj=1:nSub
              memoryPrecisions(subj, trial, nSampMemory+t) = memoryPrecision;
              visualPrecisions(subj, trial, t) = visualPrecision;
 
-             % accumulate precision-weighted additive evidence
+             % additively accumulate precision-weighted evidence
              if t==1
                 fullEvidence(subj, trial, t) = randn(1)+visualStartingPoint + memorySample*memoryDriftRate + visualSample*visualDriftRate;
              else
@@ -278,31 +267,50 @@ end
 %% save results
 if saveFiles
     if order == 1
-        outfile = sprintf('results/first-order/workspace_files/%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin_%iv_%ialtBeta_%itrials.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, v, altBeta, nTrial);
+        %outfile = sprintf('results/first-order/workspace_files/%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin_%iv_%imemSamp.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, v, nSampMemory);
+         outfile = sprintf('ccn_submission/poster/supplement/FO_summary/%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
     else
-        outfile = sprintf('results/second-order/workspace_files/%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin_%iv_%ialtBeta_%itrials.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, v, altBeta, nTrial);
+        %outfile = sprintf('results/second-order/workspace_files/%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin_%iv_%imemSamp.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, v, nSampMemory);
+         outfile = sprintf('ccn_submission/poster/supplement/SO_%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
     end
     save(outfile)
 
-% write csv with choices & RTs so i can plot those in R
-    accuracy = choices';
-    RT = RT';
-    order = repmat(order, [nTrial 1]);
-    cueLevel = repmat(cueLevel, [nTrial 1]);
-    anticipatedCoherence = repmat(anticipatedCoherence, [nTrial 1]);
-    coherenceLevel = repmat(coherenceLevel, [nTrial 1]);
-    congruent = repmat(congruent, [nTrial 1]);
-    altBeta = repmat(altBeta, [nTrial 1]);
-    threshold = repmat(threshold, [nTrial 1]);
-    memoryThinning = repmat(memoryThinning, [nTrial 1]);
-    v = repmat(v, [nTrial 1]);
-    behav_csv = table(accuracy, RT, order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, altBeta, v);
+% write behavior csv for first order only
     if order == 1
-        filename = ['results/first-order/behav_csv/' char(extractBetween(outfile, 'files/', '.mat')) '.csv'];
-    else
-        filename = ['results/second-order/behav_csv/' char(extractBetween(outfile, 'files/', '.mat')) '.csv'];
+        order = repmat(order, [nSub 1]);
+        cueLevel = repmat(cueLevel, [nSub 1]);
+        anticipatedCoherence = repmat(anticipatedCoherence, [nSub 1]);
+        coherenceLevel = repmat(coherenceLevel, [nSub 1]);
+        congruent = repmat(congruent, [nSub 1]);
+        threshold = repmat(threshold, [nSub 1]);
+        behav_csv = table(choices, RT, order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold);
+        filename = ['ccn_submission/poster/supplement/FO_summary/' char(extractBetween(outfile, 'summary/', '.mat')) '.csv'];
+%     if order == 1
+%         %filename = ['results/first-order/behav_csv/' char(extractBetween(outfile, 'files/', '.mat')) '.csv'];
+%     else
+%         %filename = ['results/second-order/behav_csv/' char(extractBetween(outfile, 'files/', '.mat')) '.csv'];
+%         filename = ['ccn_submission/poster/supplement/SO_' char(extractBetween(outfile, 'ccn', '.mat')) '.csv'];
+%     end
+        writetable(behav_csv, filename);
     end
-    writetable(behav_csv, filename);
+
+    % write prior parameter csv
+    if order == 2
+        memoryAlphas = squeeze(memoryAlphas)';
+        memoryBetas = squeeze(memoryBetas)';
+        visualAlphas = [NaN(nSampMemory, nTrial); squeeze(visualAlphas)'];
+        visualBetas = [NaN(nSampMemory, nTrial); squeeze(visualBetas)'];
+        RT = repmat(RT, [110 1]);
+        order = repmat(order, [nSampVisual + nSampMemory 1]);
+        cueLevel = repmat(cueLevel, [nSampVisual + nSampMemory 1]);
+        anticipatedCoherence = repmat(anticipatedCoherence, [nSampVisual + nSampMemory 1]);
+        coherenceLevel = repmat(coherenceLevel, [nSampVisual + nSampMemory 1]);
+        congruent = repmat(congruent, [nSampVisual + nSampMemory 1]);
+        prior_params = table(memoryAlphas, memoryBetas, visualAlphas, visualBetas, RT, order, cueLevel, anticipatedCoherence, coherenceLevel, congruent);
+        filename = ['ccn_submission/poster/supplement/priorParams_' char(extractBetween(outfile, 'SO_', '.mat')) '.csv'];
+        writetable(prior_params, filename)
+    end
+
 end
 %% Plot results
 % trial traces
@@ -347,38 +355,39 @@ if plotResults
     xlabel(plots, 'time (a.u.)');
     ylabel(plots, 'evidence (a.u.)');
     if saveFiles
-        outfig = char(regexp(outfile, 'b.*cong', 'match'));
-        saveas(gcf, [outfig '_traces.png']);
+        figpath = ['ccn_submission/poster/supplement/' char(extractBetween(outfile, 'supplement/', '.mat'))];
+        %outfig = char(regexp(outfile, 'b.*cong', 'match'));
+        saveas(gcf, [figpath '_traces.png']);
     end
      
     % drifts
-    fig=figure; 
-    for b=1:10
-        subplot(2, 5, b)
-        hold on;
-        plot(squeeze(memoryDriftRates(1,b,:)), 'LineWidth',1.5)
-        plot([addX;squeeze(visualDriftRates(1, b, :))], 'LineWidth',1.5)
-        plot([1,140],[0,0],'k')
-        xline(nSampMemory, 'k--')
-        string2 = sprintf('trial %i', b);
-        title(string2);
-    end
-    h=legend({'memory','visual'},'Orientation','horizontal');
-    set(h, 'Position', [0.65 0.46 0.25 0.025]);
-    if order==1
-        sgtitle(sprintf(['first-order model\n' string]));
-    else
-        sgtitle(sprintf(['second-order model\n' string]));
-    end
-    plots=axes(fig, 'visible', 'off');
-    plots.XLabel.Visible='on';
-    plots.YLabel.Visible='on';
-    plots.Title.Visible='on';
-    xlabel(plots, 'time (a.u.)');
-    ylabel(plots, 'drift rate (a.u.)');
-    if saveFiles
-        saveas(gcf, [outfig '_drifts.png']);
-    end
+%     fig=figure; 
+%     for b=1:10
+%         subplot(2, 5, b)
+%         hold on;
+%         plot(squeeze(memoryDriftRates(1,b,:)), 'LineWidth',1.5)
+%         plot([addX;squeeze(visualDriftRates(1, b, :))], 'LineWidth',1.5)
+%         plot([1,140],[0,0],'k')
+%         xline(nSampMemory, 'k--')
+%         string2 = sprintf('trial %i', b);
+%         title(string2);
+%     end
+%     h=legend({'memory','visual'},'Orientation','horizontal');
+%     set(h, 'Position', [0.65 0.46 0.25 0.025]);
+%     if order==1
+%         sgtitle(sprintf(['first-order model\n' string]));
+%     else
+%         sgtitle(sprintf(['second-order model\n' string]));
+%     end
+%     plots=axes(fig, 'visible', 'off');
+%     plots.XLabel.Visible='on';
+%     plots.YLabel.Visible='on';
+%     plots.Title.Visible='on';
+%     xlabel(plots, 'time (a.u.)');
+%     ylabel(plots, 'drift rate (a.u.)');
+%     if saveFiles
+%         saveas(gcf, [figpath '_drifts.png']);
+%     end
 end
 end
 
