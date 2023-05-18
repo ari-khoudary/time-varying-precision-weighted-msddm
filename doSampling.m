@@ -1,402 +1,316 @@
-function [choices, RT] = doSampling(order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, ...
-    threshold, memoryThinning, v, ...
-    saveFiles, plotResults)
+function data = doSampling(config)
 
-% multi-stage, multi-source sequential sampling model. sample weights vary
-% dynamically as the relative precision of each evidence stream, updated
-% after each sample.
+%% unpack params
+nTrial = config.nTrial; %per cue
+trialDuration = config.trialDuration; %in seconds; maximum possible duration
+cue = config.cue;
+coherence = config.coherence;
+threshold = config.threshold;
+memoryThinning = config.memoryThinning;
+visionThinning = config.visionThinning;
+vizPresentationRate = config.vizPresentationRate;
+maxNoiseDuration = config.maxNoiseDuration;
+minNoiseDuration = config.minNoiseDuration;
+minSignalDuration = config.minSignalDuration;
+flickerNoisePadding = config.flickerNoisePadding;
+flickerNoiseValue = config.flickerNoiseValue;
 
-% INPUTS
-% order [1,2]: determines whether the precision will be computed in a first- or
-% second-order manner. first-order precision=inverse entropy of evidence
-% stream; second-order precision=inverse variance of the distribution over
-% the data-generating parameter. CCN 2022 results use the second-order
-% model only
+% do you want to save any frame-by-frame information?
+saveEvidence = config.saveEvidence;
+saveAccumulators = config.saveAccumulators;
+saveCounters = config.saveCounters;
+savePrecisions = config.savePrecisions;
+saveDrifts = config.saveDrifts;
 
-% cueLevel [0:1]: sets the precision of memory evidence
+% translate parameters into simulation-space
+nFrames = trialDuration/vizPresentationRate;
+congruentTrials = ceil(nTrial*cue);
+congruent = [ones(congruentTrials, 1); zeros(nTrial-congruentTrials,1)];
+noiseFrames = zeros(nTrial, 1);
+maxNoiseFrames = maxNoiseDuration/vizPresentationRate;
+noiseMin = round(minNoiseDuration/vizPresentationRate); %in frames
+signalMin = round(minSignalDuration/vizPresentationRate); %in frames
 
-% anticipatedCoherence [0:1]: sets the observer's expectation about the
-% precision of upcoming visual evidence
+%% create arrays to hold values
+choices = zeros(nTrial, 2);
+RTs = zeros(nTrial, 1);
+memoryAccumulator = zeros(nFrames, nTrial);
+visionAccumulator = zeros(nFrames, nTrial);
+decisionVariable = zeros(nFrames, nTrial);
+memoryPrecisions = zeros(nFrames, nTrial);
+visionPrecisions = zeros(nFrames, nTrial);
+memoryDrift = zeros(nFrames, nTrial);
+visionDrift = zeros(nFrames, nTrial);
+counters = zeros(nFrames, 4, nTrial);
 
-% coherenceLevel [0:1]: sets the precision of visual evidence
+% create index variables
+alphaMem_idx = 1;
+betaMem_idx = 2;
+alphaVis_idx = 3;
+betaVis_idx = 4;
 
-% congruent [0,1]: determines whether visual evidence is congruent
-% with memory evidence
-
-% threshold [1:Inf]: bounds of accumulator
-
-% memoryThinning [1:Inf]: how much to slow the memory sample rate relative to
-% visual sampling rate during parallel sampling. memoryThinning=1 sets
-% memory sample rate equal to visual sampling rate (via mod())
-
-% v [1:Inf]: scales the size of the visual prior for the first order model,
-% will be updated soon to also scale the size of the visual prior for the
-% second order model. all CCN 2022 results were generated with v=0
-
-% saveFiles [0,1]: turns off/on saving of .mat files, exporting of
-% behavioral .csv files, and saving of figures
-
-% plotResults [0,1]: turns off/on automatic plotting of evidence traces
-% and drift rates for the first 10 trials of the simulation
-
-% OUTPUTS
-% choices: 1xnTrial array of optimal choices for the above-defined task
-% settings
-
-% RT: 1xnTrial array of reaction times (arbitrary units) for those choices
-
-% MODIFIABLE SIMULATION SETTINGS
-% nSampMemory [1:Inf]: number of pre-cue memory samples / duration of memory
-% sampling period
-
-% nSampVisual [1:Inf]: number of visual samples / duration of parallel sampling
-% period
-
-% nSub [1:Inf]: number of subjects. currently we do not model any individual
-% differences so this parameter is irrelevant
-
-% nTrial [1:Inf]: number of trials. if auto-plotting of results is desired, a
-% minimum of 10 trials is needed
-
-% memory or visual StartingPoint [0:Inf]: intercept of each evidence source's
-% accumulator
-
-% Code written by Ari Khoudary with help from Aaron Bornstein & Megan
-% Peters
-
-%% Initialize variables
-% define sampling windows
-nSampMemory = (750+500)/125; %miliseconds allotted in the experiment divided by estimate of memory sampling rate
-nSampVisual = (1/30)*3000; %computer refresh rate * miliseconds allotted in the experiment
-
-% define number of subjects & trials
-nSub = 50;
-nTrial = 25;
-
-% define DDM parameters
-memoryStartingPoint = 0;  
-visualStartingPoint = 0;
-
-% create variables to store values
-memoryEvidence = zeros(nSub, nTrial, nSampMemory+nSampVisual); 
-visualEvidence = zeros(nSub, nTrial, nSampVisual);
-fullEvidence = zeros(nSub, nTrial, nSampVisual);
-choices = zeros(nSub,nTrial);
-RT = zeros(nSub, nTrial);
-memoryDriftRates = memoryEvidence;
-visualDriftRates = visualEvidence;
-memoryPrecisions = memoryEvidence;
-visualPrecisions = visualEvidence;
-memoryAlphas = memoryEvidence;
-memoryBetas = memoryEvidence;
-visualAlphas = visualEvidence;
-visualBetas = visualEvidence;
-
-%% Run simulation
-for subj=1:nSub
-        % make an array of "ghost samples" that functions as the visual prior
-         ghostSamples = (binornd(1, anticipatedCoherence, [nSub, nTrial, v])*2-1) + normrnd(0,1, [nSub, nTrial, v]);
-    for trial=1:nTrial
-        % reset counters on each trial
-        alphaMem = 1;
-        betaMem = 1;
-        alphaVis = 1;
-        betaVis = 1;
-        framesTargetA = 0;
-        framesTargetB = 0;
-        memSampsTargetA = 0;
-        memSampsTargetB = 0;
-
-        % anticipatory memory sampling
-        for i=1:nSampMemory
-            % generate & save memory sample
-              memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
-              if memorySample> 0
-                 memSampsTargetA = 1 + memSampsTargetA;
-              else
-                  memSampsTargetB = 1 + memSampsTargetB;
-              end
-
-              % compute precision-weighted drift rate
-              if order==2
-                alphaMem = alphaMem + memSampsTargetA;
-                betaMem = betaMem + memSampsTargetB;
-                memoryAlphas(subj, trial, i) = alphaMem;
-                memoryBetas(subj, trial, i) = betaMem;
-                memoryPrecision = 1/betaVar(alphaMem, betaMem);
-              
-              else % first-order precision
-                memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
-                if i == 1
-                  memoryPrecision = 1/computeEntropy(cueLevel);
-                else
-                  memoryPrecision = 1/computeEntropy(memProbTargetA);
-                end
-              end
-              
-              memoryDriftRate = memoryPrecision / (memoryPrecision + (1/computeEntropy(anticipatedCoherence)));
-
-              % store values
-              memoryPrecisions(subj, trial, i) = memoryPrecision;
-              memoryDriftRates(subj, trial, i) = memoryDriftRate;
-
-              % accumulate evidence
-              if i == 1
-                 memoryEvidence(subj, trial, i) = randn(1)+memoryStartingPoint + memoryDriftRate*memorySample;
-             else
-                memoryEvidence(subj, trial, i) = memoryEvidence(subj, trial, i-1) + memoryDriftRate*memorySample;
-              end
-        end
-
-        % then begin parallel visual & memory sampling
-        for t=1:nSampVisual
-
-            % generate memory & visual samples
-            if congruent
-                if ~mod(t, memoryThinning) % only draw a new memory sample every timepoint set by memoryThinning
-                    memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
-                end
-                visualSample = (binornd(1,coherenceLevel)*2-1) + normrnd(0,1);
-            else
-                if ~mod(t,memoryThinning)
-                    memorySample = (binornd(1,cueLevel)*2-1) + normrnd(0,1);
-                end
-                visualSample = -(binornd(1,coherenceLevel)*2-1) + normrnd(0,1);
-            end
-
-             % add samples to evidence matrices
-             if t==1
-                 visualEvidence(subj, trial, t) = visualSample;
-                 memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, nSampMemory) + memorySample;
-             else
-                  visualEvidence(subj, trial, t) = visualEvidence(subj, trial, t-1) + visualSample;
-                  memoryEvidence(subj, trial, nSampMemory+t) = memoryEvidence(subj, trial, nSampMemory+(t-1)) + memorySample;
-             end
-
-             % update target counters
-            if visualSample > 0 
-                framesTargetA = 1 + framesTargetA;
-            else
-                framesTargetB = 1 + framesTargetB;
-            end
-            
-            if ~mod(t,memoryThinning)
-                if memorySample > 0 
-                    memSampsTargetA = 1 + memSampsTargetA;
-                else
-                    memSampsTargetB = 1 + memSampsTargetB;
-                end
-            end
-
-            % update memory probability
-            if order ==  2
-                if ~mod(t,memoryThinning)
-                    alphaMem = alphaMem + memSampsTargetA;
-                    betaMem = betaMem + memSampsTargetB;
-                    memoryAlphas(subj, trial, nSampMemory+t) = alphaMem;
-                    memoryBetas(subj, trial, nSampMemory+t) = betaMem;
-                    memoryPrecision = 1/betaVar(alphaMem, betaMem);
-                end
-            % and precision-weighted drift rate
-                alphaVis = alphaVis + framesTargetA;
-                betaVis = betaVis + framesTargetB;
-                visualAlphas(subj, trial, t) = alphaVis;
-                visualBetas(subj, trial, t) = betaVis;
-                visualPrecision = 1/betaVar(alphaVis, betaVis);
-
-            else % first-order analogs
-                 % memory probability & precision
-                 if ~mod(t,memoryThinning)
-                    memProbTargetA = memSampsTargetA / (memSampsTargetA + memSampsTargetB);
-                    memoryPrecision = 1/computeEntropy(memProbTargetA);
-                 end
-                 
-                 % vision probability & precision
-                 ghostProbTargetA = mean(ghostSamples(subj, trial, :) > 0);
-                 probTargetA = (ghostProbTargetA + framesTargetA) / (v + framesTargetA + framesTargetB);
-                 if t==1
-                    visualPrecision = 1/computeEntropy(ghostProbTargetA);
-                else
-                    visualPrecision = 1/computeEntropy(probTargetA);
-                 end
-            end
-
-             % compute drift rates as relative evidence precisions
-             memoryDriftRate = memoryPrecision / (visualPrecision + memoryPrecision);
-             visualDriftRate = visualPrecision / (visualPrecision + memoryPrecision);
-
-             % store values
-             memoryDriftRates(subj, trial, nSampMemory+t) = memoryDriftRate;
-             visualDriftRates(subj, trial, t) = visualDriftRate;
-             memoryPrecisions(subj, trial, nSampMemory+t) = memoryPrecision;
-             visualPrecisions(subj, trial, t) = visualPrecision;
-
-             % additively accumulate precision-weighted evidence
-             if t==1
-                fullEvidence(subj, trial, t) = randn(1)+visualStartingPoint + memorySample*memoryDriftRate + visualSample*visualDriftRate;
-             else
-                 fullEvidence(subj, trial, t) = fullEvidence(subj, trial, t-1) + ...
-                     memorySample*memoryDriftRate + visualSample*visualDriftRate;
-             end
-        end
-        
-        % find point at which evidence crosses threshold
-        boundaryIdx = find(abs(fullEvidence(subj,trial,:))>threshold, 1);
-        if isempty(boundaryIdx)
-            boundaryIdx = nSampVisual;
-        end
-        RT(subj, trial) = boundaryIdx;
-
-        % populate choice matrix accordingly
-        if congruent 
-            if fullEvidence(subj,trial,boundaryIdx) > threshold
-                choices(subj,trial) = 1;
-            else
-                choices(subj,trial) = 0;
-            end
-        else
-            if fullEvidence(subj,trial,boundaryIdx) < -threshold
-                choices(subj,trial) = 1;
-            else
-                choices(subj,trial) = 0;
-            end
-        end
-    end
+%% set up
+% precompute entropy distribution
+p = 0.01:.01:0.99;
+entropy = zeros(length(p), 1);
+for i = 1:length(p)
+    entropy(i) = computeEntropy(p(i));
 end
 
-%% save results
-if saveFiles
-    if order == 1
-        %outfile = sprintf('results/first-order/workspace_files/%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin_%iv_%imemSamp.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, v, nSampMemory);
-         outfile = sprintf('ccn_submission/poster/supplement/FO_summary/%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
+% and exponential distribution for noise durations
+lambda = 0.15;
+noisePDF = discrete_bounded_hazard_rate(lambda, maxNoiseFrames);
+noiseDistribution = round(noisePDF * nTrial);
+trialCount = cumsum(noiseDistribution);
+for i = 1:length(noiseDistribution)
+    if i==1
+        noiseFrames(1:noiseDistribution(i))=1;
     else
-        %outfile = sprintf('results/second-order/workspace_files/%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin_%iv_%imemSamp.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, memoryThinning, v, nSampMemory);
-         outfile = sprintf('ccn_submission/poster/supplement/SO_%.2fcue_%.2fantCoh_%.2fcoh_%icong.mat', cueLevel, anticipatedCoherence, coherenceLevel, congruent);
+        startrow = trialCount(i) - noiseDistribution(i);
+        endrow = trialCount(i);
+        noiseFrames(startrow:endrow) = i;
     end
-    save(outfile)
-
-% write behavior csv for first order only
-    if order == 1
-        order = repmat(order, [nSub 1]);
-        cueLevel = repmat(cueLevel, [nSub 1]);
-        anticipatedCoherence = repmat(anticipatedCoherence, [nSub 1]);
-        coherenceLevel = repmat(coherenceLevel, [nSub 1]);
-        congruent = repmat(congruent, [nSub 1]);
-        threshold = repmat(threshold, [nSub 1]);
-        behav_csv = table(choices, RT, order, cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold);
-        filename = ['ccn_submission/poster/supplement/FO_summary/' char(extractBetween(outfile, 'summary/', '.mat')) '.csv'];
-%     if order == 1
-%         %filename = ['results/first-order/behav_csv/' char(extractBetween(outfile, 'files/', '.mat')) '.csv'];
-%     else
-%         %filename = ['results/second-order/behav_csv/' char(extractBetween(outfile, 'files/', '.mat')) '.csv'];
-%         filename = ['ccn_submission/poster/supplement/SO_' char(extractBetween(outfile, 'ccn', '.mat')) '.csv'];
-%     end
-        writetable(behav_csv, filename);
-    end
-
-    % write prior parameter csv
-    if order == 2
-        memoryAlphas = squeeze(memoryAlphas)';
-        memoryBetas = squeeze(memoryBetas)';
-        visualAlphas = [NaN(nSampMemory, nTrial); squeeze(visualAlphas)'];
-        visualBetas = [NaN(nSampMemory, nTrial); squeeze(visualBetas)'];
-        RT = repmat(RT, [110 1]);
-        order = repmat(order, [nSampVisual + nSampMemory 1]);
-        cueLevel = repmat(cueLevel, [nSampVisual + nSampMemory 1]);
-        anticipatedCoherence = repmat(anticipatedCoherence, [nSampVisual + nSampMemory 1]);
-        coherenceLevel = repmat(coherenceLevel, [nSampVisual + nSampMemory 1]);
-        congruent = repmat(congruent, [nSampVisual + nSampMemory 1]);
-        prior_params = table(memoryAlphas, memoryBetas, visualAlphas, visualBetas, RT, order, cueLevel, anticipatedCoherence, coherenceLevel, congruent);
-        filename = ['ccn_submission/poster/supplement/priorParams_' char(extractBetween(outfile, 'SO_', '.mat')) '.csv'];
-        writetable(prior_params, filename)
-    end
-
 end
-%% Plot results
-% trial traces
-if plotResults
-    if saveFiles
-            cueLevel = unique(cueLevel);
-            anticipatedCoherence = unique(anticipatedCoherence);
-            coherenceLevel = unique(coherenceLevel);
-            threshold = unique(threshold);
-            order = unique(order);
-    end
-    addX = NaN(nSampMemory,1);
-    fig=figure; 
-    for a=1:10
-        subplot(2, 5, a)
-        hold on;
-        plot(squeeze(memoryEvidence(1,a,:)), 'LineWidth',1.5)
-        plot([addX;squeeze(visualEvidence(1, a, :))], 'LineWidth',1.5)
-        plot([addX;squeeze(fullEvidence(1,a,:))], 'LineWidth',1.5)
-        plot([1,140],[0,0],'k')
-        xline(nSampMemory, 'k--')
-        yline([threshold -threshold])
-        string2 = sprintf('trial %i', a);
-        title(string2);
-    end
-    if congruent
-        string = sprintf('%.2f cue, %.2f anticipated coherence, %.2f actual coherence, congruent', cueLevel, anticipatedCoherence, coherenceLevel);
+
+% create memory evidence stream
+memoryStream = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
+
+% create visual evidence stream
+noise1Frames = Shuffle(noiseFrames + noiseMin);
+noise2Frames = Shuffle(noise1Frames);
+signal1Frames = Shuffle(noiseFrames + signalMin);
+noise2Onset = noise1Frames + signal1Frames;
+
+if strcmp(flickerNoiseValue,'zero')==1
+    flickerNoise = zeros(nFrames, nTrial);
+elseif strcmp(flickerNoiseValue, 'gaussian')==1
+    flickerNoise = normrnd(0,1, [nFrames, nTrial]);
+end
+
+if flickerNoisePadding==0
+    flickerStream = ones(nFrames/2, nTrial);
+else
+    flickerStream = repmat([1; NaN], nFrames/2, nTrial);
+    noiseBool = isnan(flickerStream);
+    flickerStream(noiseBool) = flickerNoise(noiseBool);
+end
+
+for trial=1:nTrial
+    flickerStream(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial));
+    flickerStream(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial) = flickerNoise(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial));
+    imgIdx = find(flickerStream(trial,:)==1);
+    nImgFrames = length(imgIdx);
+    nTargetFrames = ceil(nImgFrames*coherence);
+    targetIdx = randsample(imgIdx, nTargetFrames);
+    lureIdx = setdiff(imgIdx, targetIdx);
+    if trial <= congruentTrials
+        target=1;
     else
-        string = sprintf('%.2f cue, %.2f anticipated coherence, %.2f actual coherence, incongruent', cueLevel, anticipatedCoherence, coherenceLevel);
+        target=-1;
     end
-    if order==1
-        sgtitle(sprintf(['first-order model\n' string]));
-    else
-        sgtitle(sprintf(['second-order model\n' string]));
-    end
-    h=legend({'memory','visual','combined'},'FontSize',8, 'Orientation', 'horizontal');
-    set(h, 'Position', [0.65 0.46 0.25 0.025]);
-    plots=axes(fig, 'visible', 'off');
-    plots.XLabel.Visible='on';
-    plots.YLabel.Visible='on';
-    plots.Title.Visible='on';
-    xlabel(plots, 'time (a.u.)');
-    ylabel(plots, 'evidence (a.u.)');
-    if saveFiles
-        figpath = ['ccn_submission/poster/supplement/' char(extractBetween(outfile, 'supplement/', '.mat'))];
-        %outfig = char(regexp(outfile, 'b.*cong', 'match'));
-        saveas(gcf, [figpath '_traces.png']);
-    end
-     
-    % drifts
-%     fig=figure; 
-%     for b=1:10
-%         subplot(2, 5, b)
-%         hold on;
-%         plot(squeeze(memoryDriftRates(1,b,:)), 'LineWidth',1.5)
-%         plot([addX;squeeze(visualDriftRates(1, b, :))], 'LineWidth',1.5)
-%         plot([1,140],[0,0],'k')
-%         xline(nSampMemory, 'k--')
-%         string2 = sprintf('trial %i', b);
-%         title(string2);
-%     end
-%     h=legend({'memory','visual'},'Orientation','horizontal');
-%     set(h, 'Position', [0.65 0.46 0.25 0.025]);
-%     if order==1
-%         sgtitle(sprintf(['first-order model\n' string]));
-%     else
-%         sgtitle(sprintf(['second-order model\n' string]));
-%     end
-%     plots=axes(fig, 'visible', 'off');
-%     plots.XLabel.Visible='on';
-%     plots.YLabel.Visible='on';
-%     plots.Title.Visible='on';
-%     xlabel(plots, 'time (a.u.)');
-%     ylabel(plots, 'drift rate (a.u.)');
-%     if saveFiles
-%         saveas(gcf, [figpath '_drifts.png']);
-%     end
-end
+    flickerStream(targetIdx, trial) = target;
+    flickerStream(lureIdx, trial) = -target;
 end
 
+% compute analytic solution for each trial
+expectedCounters = zeros(nTrial, 4);
+expectedPrecisions = zeros(nTrial, 2);
 
+expectedCounters(:, alphaMem_idx) = repmat(ceil(cue * (nFrames/memoryThinning)), [nTrial, 1]);
+expectedCounters(:, betaMem_idx) = repmat((nFrames/memoryThinning), [nTrial,1]) - expectedCounters(:, alphaMem_idx);
+if flickerNoisePadding==1
+    expectedCounters(:, alphaVis_idx) = ceil(coherence * (nFrames/2 - (noise1Frames+noise2Frames)));
+    expectedCounters(:, betaVis_idx) = (nFrames/2 - (noise1Frames+noise2Frames)) - expectedCounters(:, alphaVis_idx);
+else
+    expectedCounters(:, alphaVis_idx) = ceil(coherence * (nFrames - (noise1Frames+noise2Frames)));
+    expectedCounters(:, betaVis_idx) = (nFrames - (noise1Frames+noise2Frames)) - expectedCounters(:, alphaVis_idx);
+end
 
+expectedPrecisions(:, 1) = 1./(betaVar(expectedCounters(:, alphaMem_idx), expectedCounters(:, betaMem_idx)));
+expectedPrecisions(:, 2) = 1./(betaVar(expectedCounters(:, alphaVis_idx), expectedCounters(:, betaVis_idx)));
 
+expectedAccuracy = expectedPrecisions(:, 2)>expectedPrecisions(:,1); 
 
+%% run simulation
 
+for trial=1:nTrial
+    % initialize counters
+    alphaMem = 1;
+    betaMem = 1;
+    alphaVis = 1;
+    betaVis = 1;
 
+    % compute time-varying drift rate
+    for frame=1:nFrames
+
+        if mod(frame, visionThinning)==0
+            % update visual counters
+            if flickerStream(frame, trial) > 0
+                alphaVis = alphaVis + 1;
+            elseif flickerStream(frame, trial) < 0
+                betaVis = betaVis + 1;
+            end
+
+            % compute normalized beta pdf
+            visualPDF = betapdf(p, alphaVis, betaVis) ./ sum(betapdf(p, alphaVis, betaVis));
+            % compute precision as inverse belief-weighted entropy
+            visualPrecision = 1/sum(visualPDF .* entropy');
+            visionPrecisions(frame, trial) = visualPrecision;
+        end
+
+        % store counter values
+        counters(frame, alphaVis_idx, trial) = alphaVis;
+        counters(frame, betaVis_idx, trial) = betaVis;
+
+        if mod(frame, memoryThinning)==1 % this allows a memory sample on the first frame
+            % update memory counters
+            if memoryStream(frame, trial) > 0
+                alphaMem = alphaMem + 1;
+            else
+                betaMem = betaMem + 1;
+            end
+
+            % compute normalized beta pdf
+            memoryPDF = betapdf(p, alphaMem, betaMem) ./ sum(betapdf(p, alphaMem, betaMem));
+            % compute precision as inverse belief-weighted entropy
+            memoryPrecision = 1/sum(memoryPDF .* entropy');
+            memoryPrecisions(frame, trial) = memoryPrecision;
+        end
+
+        % store counter values
+        counters(frame, alphaMem_idx, trial) = alphaMem;
+        counters(frame, betaMem_idx, trial) = betaMem;
+
+        % compute relative precision evidence weights
+        visualDriftRate = visualPrecision / (visualPrecision + memoryPrecision);
+        memoryDriftRate = memoryPrecision / (visualPrecision + memoryPrecision);
+        visionDrift(frame, trial) = visualDriftRate;
+        memoryDrift(frame, trial) = memoryDriftRate;
+
+        % compute time-varying relative precision-weighted decision variable
+        memorySample = memoryStream(frame, trial);
+        visualSample = flickerStream(frame, trial);
+
+        if frame == 1
+            visionAccumulator(frame, trial) = visualSample * visualDriftRate;
+            if mod(frame, memoryThinning)==1
+                memoryAccumulator(frame, trial) = memorySample * memoryDriftRate;
+                decisionVariable(frame, trial) = memorySample*memoryDriftRate + visualSample * visualDriftRate;
+            else
+                decisionVariable(frame, trial) = visualSample*visualDriftRate;
+            end
+
+        else % for frames > 1
+            visionAccumulator(frame, trial) = visionAccumulator(frame-1, trial) + visualSample * visualDriftRate;
+            if mod(frame, memoryThinning) == 1
+                memoryAccumulator(frame, trial) = memoryAccumulator(frame-1, trial) + memorySample * memoryDriftRate;
+                decisionVariable(frame, trial) = decisionVariable(frame-1, trial) + memorySample*memoryDriftRate + visualSample * visualDriftRate;
+            else
+                memoryAccumulator(frame, trial) = memoryAccumulator(frame-1, trial);
+                decisionVariable(frame, trial) = decisionVariable(frame-1, trial) + visualSample*visualDriftRate;
+            end
+        end
+    end
+
+    % make decision
+    % find point at which evidence crosses threshold
+    boundaryIdx = find(abs(decisionVariable(:, trial))>threshold, 1);
+    if isempty(boundaryIdx)
+        boundaryIdx = nFrames;
+    end
+
+    % store crossing point as RT
+    RTs(trial) = boundaryIdx;
+
+    % populate choice matrix accordingly - first column is "raw"
+    % responses, second is "forced"
+    if trial <= congruentTrials
+        if decisionVariable(boundaryIdx, trial) > threshold
+            choices(trial, 1) = 1;
+            choices(trial, 2) = 1;
+        elseif boundaryIdx==nFrames
+            choices(trial, 1) = NaN;
+            if decisionVariable(boundaryIdx, trial) > 0
+                choices(trial, 2) = 1;
+            else
+                choices(trial, 2) = 0;
+            end
+        else % if wrong bound is reached
+            choices(trial, 1) = 0;
+            choices(trial, 2) = 0;
+        end
+    else % if incongruent
+        if decisionVariable(boundaryIdx, trial) < -threshold
+            choices(trial, 1) = 1;
+            choices(trial, 2) = 1;
+        elseif boundaryIdx==nFrames
+            choices(trial, 1) = NaN;
+            if decisionVariable(boundaryIdx, trial) < 0
+                choices(trial, 2) = 1;
+            else
+                choices(trial, 2) = 0;
+            end
+        else % if wrong bound is reached
+            choices(trial, 1) = 0;
+            choices(trial, 2) = 0;
+        end
+    end
+end
+
+%% store results
+% simulation settings
+data.nTrial = nTrial;
+data.trialDuration = trialDuration;
+data.cue = cue;
+data.coherence = coherence;
+data.threshold = threshold;
+data.congruent = congruent;
+data.memoryThinning = memoryThinning;
+data.visionThinning = visionThinning;
+data.nFrames = nFrames;
+data.vizPresentationRate = vizPresentationRate;
+data.maxNoiseDuration = maxNoiseDuration;
+data.minNoiseDuration = minNoiseDuration;
+data.minSignalDuration = minSignalDuration;
+data.noise1Frames = noise1Frames;
+data.noise2Frames = noise2Frames;
+data.noise2Onset = noise2Onset;
+data.signal1Frames = signal1Frames;
+data.flickerNoiseValue = flickerNoiseValue;
+data.flickerNoisePadding = flickerNoisePadding;
+data.counters = counters;
+
+% behavior
+data.choices = choices;
+data.RT = RTs;
+data.expectedAccuracy = expectedAccuracy;
+
+% optional frame-by-frame info
+if saveEvidence==1
+    data.memoryEvidence = memoryStream;
+    data.visionEvidence = flickerStream;
+end
+
+if saveAccumulators==1
+    data.memoryAccumulator = memoryAccumulator;
+    data.visionAccumulator = visionAccumulator;
+end
+
+if saveCounters==1
+    data.counters=counters;
+end
+
+if savePrecisions==1
+    data.memoryPrecisions = memoryPrecisions;
+    data.visionPrecisions = visionPrecisions;
+end
+
+if saveDrifts==1
+    data.memoryDrifts = memoryDrift;
+    data.visionDrifts = visionDrift;
+end
+
+end
 
 
 
