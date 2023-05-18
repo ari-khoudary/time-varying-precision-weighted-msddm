@@ -1,112 +1,49 @@
-%% specify configuration & load in file
-dir = 'results/power_check/second-order/workspace_files/';
-cueLevel = 0.80;
-anticipatedCoherence = 0.50;
-coherenceLevel = 0.50;
-congruent = 1;
-threshold = 25;
-thinning = 4;
-trials=1:10;
+% trial plots
+% traces
+if plotResults==1
+    fig=figure;
+    for a=1:10
+        subplot(2, 5, a)
+        hold on;
+        plot(memoryAccumulator(:, a, 1), 'LineWidth',1.5)
+        plot(visionAccumulator(:, a, 1), 'LineWidth',1.5)
+        plot(decisionVariable(:, a, 1), 'LineWidth',1.5)
+        xline(noise1Frames(a))
+        xline([noise1Frames(a)+signal1Frames(a), noise1Frames(a)+signal1Frames(a)+noise2Frames(a)], 'k--')
+        yline([threshold -threshold])
+        string2 = sprintf('trial %i', a);
+        title(string2);
+    end
 
-infile = sprintf([dir '%.2fcue_%.2fantCoh_%.2fcoh_%icong_%ithresh_%ithin.mat'], cueLevel, anticipatedCoherence, coherenceLevel, congruent, threshold, thinning);
-load(infile);
-addX = NaN(nSampMemory,1);
+    % add title
+    if congruent==1
+        string = sprintf('%.2f cue, %.2f coherece, %i thinning, congruent', cueLevel, coherence, memoryThinning);
+    else
+        string = sprintf('%.2f cue, %.2f coherence, %i thinning, incongruent', cueLevel, coherence, memoryThinning);
+    end
+    sgtitle(sprintf(['combo model\n' string]));
 
-%% traces
-fig=figure; 
-counter=1;
-for a=trials
-    subplot(2, 5, counter)
-    hold on;
-    plot(squeeze(memoryEvidence(subj,a,:)), 'LineWidth',2)
-    plot([addX;squeeze(visualEvidence(subj, a, :))], 'LineWidth',2)
-    plot([addX;squeeze(fullEvidence(subj,a,:))], 'LineWidth',3)
-    plot([1,140],[0,0],'k')
-    xline(nSampMemory, 'k--')
-    yline([threshold -threshold])
-    string2 = sprintf('trial %i', a);
-    title(string2);
-    counter=counter+1;
-end
-if congruent==1
-    string = sprintf('%.2f cue, %.2f anticipated coherence, %.2f actual coherence, congruent', cueLevel, anticipatedCoherence, coherenceLevel);
-else
-    string = sprintf('%.2f cue, %.2f anticipated coherence, %.2f actual coherence, incongruent', cueLevel, anticipatedCoherence, coherenceLevel);
-end
-if strcmp(dir, 'entropy_results/')
-     sgtitle(sprintf(['first-order model\n' string]));
-else
-     sgtitle(sprintf(['second-order model\n' string]));
-end
-h=legend({'memory','visual','combined'},'FontSize',8, 'Orientation', 'horizontal');
-set(h, 'Position', [0.55 0.46 0.35 0.025]);
-outfig = char(regexp(outfile, '0.*cong', 'match'));
-plots=axes(fig, 'visible', 'off');
-plots.XLabel.Visible='on';
-plots.YLabel.Visible='on';
-plots.Title.Visible='on';
-xlabel(plots, 'time (a.u.)');
-ylabel(plots, 'evidence (a.u.)');
-%saveas(gcf, [outfig '_traces.png']);
- 
-%% drifts
-fig=figure; 
-counter=1;
-for b=trials
-    subplot(2, 5, counter)
-    hold on;
-    plot(squeeze(memoryDriftRates(subj,b,:)), 'LineWidth',1.5)
-    plot([addX;squeeze(visualDriftRates(subj, b, :))], 'LineWidth',1.5)
-    plot([1,140],[0,0],'k')
-    xline(nSampMemory, 'k--')
-    string2 = sprintf('trial %i', b);
-    title(string2);
-    counter=counter+1;
+    % make pretty
+    h=legend({'memory','visual','combined'},'FontSize',8, 'Orientation', 'horizontal');
+    set(h, 'Position', [0.65 0.46 0.25 0.025]);
+    plots=axes(fig, 'visible', 'off');
+    plots.XLabel.Visible='on';
+    plots.YLabel.Visible='on';
+    plots.Title.Visible='on';
+    xlabel(plots, 'time (a.u.)');
+    ylabel(plots, 'evidence (a.u.)');
+    if writeCSV==1
+        figpath = sprintf('results_v2/trace_figs/%.2fcue_%icong_%.2fcoh_%ithin.png', cueLevel, congruent, coherence, memoryThinning);
+        saveas(gcf, figpath);
+    end
 end
 
-h=legend({'memory','visual'},'Orientation','horizontal');
-set(h, 'Position', [0.65 0.46 0.25 0.025]);
 
-if strcmp(dir, 'entropy_results/')
-     sgtitle(sprintf(['first-order model\n' string]));
-else
-     sgtitle(sprintf(['second-order model\n' string]));
-end
-plots=axes(fig, 'visible', 'off');
-plots.XLabel.Visible='on';
-plots.YLabel.Visible='on';
-plots.Title.Visible='on';
-xlabel(plots, 'time (a.u.)');
-ylabel(plots, 'drift rate (a.u.)');
-%saveas(gcf, [outfig '_traces.png']);
 
-%% precisions
-fig=figure; 
-counter=1;
-for b=trials
-    subplot(2, 5, counter)
-    hold on;
-    plot(squeeze(memoryPrecisions(subj,b,:)), 'LineWidth',1.5)
-    plot([addX;squeeze(visualPrecisions(subj, b, :))], 'LineWidth',1.5)
-    plot([1,140],[0,0],'k')
-    xline(nSampMemory, 'k--')
-    string2 = sprintf('trial %i', b);
-    title(string2);
-    counter=counter+1;
-end
 
-h=legend({'memory','visual'},'Orientation','horizontal');
-set(h, 'Position', [0.65 0.46 0.25 0.025]);
 
-if strcmp(dir, 'entropy_results/')
-     sgtitle(sprintf(['first-order model\n' string]));
-else
-     sgtitle(sprintf(['second-order model\n' string]));
-end
-plots=axes(fig, 'visible', 'off');
-plots.XLabel.Visible='on';
-plots.YLabel.Visible='on';
-plots.Title.Visible='on';
-xlabel(plots, 'time (a.u.)');
-ylabel(plots, 'precision (a.u.)');
-%saveas(gcf, [outfig '_traces.png']);
+
+
+
+
+
