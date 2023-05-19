@@ -24,6 +24,7 @@ flickerNoiseValue = 'zero'; %string; how do you want to model noise frames? opti
 
 % do you want to save frame-by-frame information for each trial?
 saveEvidence = 1;
+saveFlickerNoise = 1;
 saveAccumulators = 1;
 saveCounters = 1;
 savePrecisions = 1;
@@ -39,16 +40,17 @@ config.visionThinning = visionThinning;
 config.vizPresentationRate = vizPresentationRate;
 
 % durations in seconds
-config.trialDuration = trialDuration;
 config.maxNoiseDuration = maxNoiseDuration;
 config.minNoiseDuration = minNoiseDuration;
 config.minSignalDuration = minSignalDuration;
+config.secondSignalMin = secondSignalMin;
 config.expLambda = expLambda;
 
-% visual evidence noise
+config.halfNeutralTrials = halfNeutralTrials;
 config.flickerNoisePadding = flickerNoisePadding;
 config.flickerNoiseValue = flickerNoiseValue;
 config.saveEvidence = saveEvidence;
+config.saveFlickerNoise = saveFlickerNoise;
 config.saveAccumulators = saveAccumulators;
 config.saveCounters = saveCounters;
 config.savePrecisions = savePrecisions;

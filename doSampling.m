@@ -2,7 +2,6 @@ function data = doSampling(config)
 
 %% unpack params
 nTrial = config.nTrial; %per cue
-trialDuration = config.trialDuration; %in seconds; maximum possible duration
 cue = config.cue;
 coherence = config.coherence;
 threshold = config.threshold;
@@ -20,12 +19,13 @@ flickerNoiseValue = config.flickerNoiseValue;
 
 % do you want to save any frame-by-frame information?
 saveEvidence = config.saveEvidence;
+saveFlickerNoise = config.saveFlickerNoise;
 saveAccumulators = config.saveAccumulators;
 saveCounters = config.saveCounters;
 savePrecisions = config.savePrecisions;
 saveDrifts = config.saveDrifts;
 
-% translate parameters into simulation-space
+%% translate parameters into simulation-space
 if cue==0.5 && halfNeutralTrials==1
     nTrial=nTrial/2;
 end
@@ -88,12 +88,14 @@ end
 memoryStream = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
 
 % create visual evidence stream
+% make noise matrix
 if strcmp(flickerNoiseValue,'zero')==1
     flickerNoise = zeros(nFrames, nTrial);
 elseif strcmp(flickerNoiseValue, 'gaussian')==1
     flickerNoise = normrnd(0,1, [nFrames, nTrial]);
 end
 
+% initialize stream
 if flickerNoisePadding==0
     flickerStream = ones(nFrames/2, nTrial);
 else
@@ -102,10 +104,11 @@ else
     flickerStream(noiseBool) = flickerNoise(noiseBool);
 end
 
+% populate according to coherence & noise frames
 for trial=1:nTrial
-    flickerStream(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial));
-    flickerStream(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial) = flickerNoise(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial));
-    imgIdx = find(flickerStream(trial,:)==1);
+    flickerStream(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial), trial);
+    flickerStream(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial) = flickerNoise(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial);
+    imgIdx = find(flickerStream(:, trial)==1);
     nImgFrames = length(imgIdx);
     nTargetFrames = ceil(nImgFrames*coherence);
     targetIdx = randsample(imgIdx, nTargetFrames);
@@ -297,6 +300,10 @@ data.expectedAccuracy = expectedAccuracy;
 if saveEvidence==1
     data.memoryEvidence = memoryStream;
     data.visionEvidence = flickerStream;
+end
+
+if saveFlickerNoise==1
+    data.flickerNoise = flickerNoise;
 end
 
 if saveAccumulators==1
