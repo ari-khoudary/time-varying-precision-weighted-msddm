@@ -9,9 +9,12 @@ threshold = config.threshold;
 memoryThinning = config.memoryThinning;
 visionThinning = config.visionThinning;
 vizPresentationRate = config.vizPresentationRate;
+expLambda = config.expLambda;
 maxNoiseDuration = config.maxNoiseDuration;
 minNoiseDuration = config.minNoiseDuration;
 minSignalDuration = config.minSignalDuration;
+secondSignalMin = config.secondSignalMin;
+halfNeutralTrials = config.halfNeutralTrials;
 flickerNoisePadding = config.flickerNoisePadding;
 flickerNoiseValue = config.flickerNoiseValue;
 
@@ -23,13 +26,37 @@ savePrecisions = config.savePrecisions;
 saveDrifts = config.saveDrifts;
 
 % translate parameters into simulation-space
-nFrames = trialDuration/vizPresentationRate;
+if cue==0.5 && halfNeutralTrials==1
+    nTrial=nTrial/2;
+end
 congruentTrials = ceil(nTrial*cue);
 congruent = [ones(congruentTrials, 1); zeros(nTrial-congruentTrials,1)];
+
+% make noise durations
 noiseFrames = zeros(nTrial, 1);
 maxNoiseFrames = maxNoiseDuration/vizPresentationRate;
 noiseMin = round(minNoiseDuration/vizPresentationRate); %in frames
 signalMin = round(minSignalDuration/vizPresentationRate); %in frames
+noisePDF = discrete_bounded_hazard_rate(expLambda, maxNoiseFrames);
+noiseDistribution = round(noisePDF * nTrial);
+trialCount = cumsum(noiseDistribution);
+for i = 1:length(noiseDistribution)
+    if i==1
+        noiseFrames(1:noiseDistribution(i))=1;
+    else
+        startrow = trialCount(i) - noiseDistribution(i);
+        endrow = trialCount(i);
+        noiseFrames(startrow:endrow) = i;
+    end
+end
+
+noise1Frames = Shuffle(noiseFrames + noiseMin);
+noise2Frames = Shuffle(noise1Frames);
+signal1Frames = Shuffle(noiseFrames + signalMin);
+noise2Onset = noise1Frames + signal1Frames;
+nFrames = max(signal1Frames) + 2*maxNoiseFrames + signalMin + secondSignalMin;
+trialDuration = nFrames*vizPresentationRate;
+
 
 %% create arrays to hold values
 choices = zeros(nTrial, 2);
@@ -57,30 +84,10 @@ for i = 1:length(p)
     entropy(i) = computeEntropy(p(i));
 end
 
-% and exponential distribution for noise durations
-lambda = 0.15;
-noisePDF = discrete_bounded_hazard_rate(lambda, maxNoiseFrames);
-noiseDistribution = round(noisePDF * nTrial);
-trialCount = cumsum(noiseDistribution);
-for i = 1:length(noiseDistribution)
-    if i==1
-        noiseFrames(1:noiseDistribution(i))=1;
-    else
-        startrow = trialCount(i) - noiseDistribution(i);
-        endrow = trialCount(i);
-        noiseFrames(startrow:endrow) = i;
-    end
-end
-
 % create memory evidence stream
 memoryStream = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
 
 % create visual evidence stream
-noise1Frames = Shuffle(noiseFrames + noiseMin);
-noise2Frames = Shuffle(noise1Frames);
-signal1Frames = Shuffle(noiseFrames + signalMin);
-noise2Onset = noise1Frames + signal1Frames;
-
 if strcmp(flickerNoiseValue,'zero')==1
     flickerNoise = zeros(nFrames, nTrial);
 elseif strcmp(flickerNoiseValue, 'gaussian')==1
@@ -268,6 +275,7 @@ data.congruent = congruent;
 data.memoryThinning = memoryThinning;
 data.visionThinning = visionThinning;
 data.nFrames = nFrames;
+data.trialDuration = trialDuration;
 data.vizPresentationRate = vizPresentationRate;
 data.maxNoiseDuration = maxNoiseDuration;
 data.minNoiseDuration = minNoiseDuration;
