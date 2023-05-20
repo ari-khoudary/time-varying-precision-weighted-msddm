@@ -2,6 +2,8 @@ function data = doSampling(config)
 
 %% unpack params
 nTrial = config.nTrial; %per cue
+nSub = config.nSub;
+subID = config.subID;
 cue = config.cue;
 coherence = config.coherence;
 threshold = config.threshold;
@@ -24,6 +26,9 @@ saveAccumulators = config.saveAccumulators;
 saveCounters = config.saveCounters;
 savePrecisions = config.savePrecisions;
 saveDrifts = config.saveDrifts;
+
+% where do you want to save the results?
+outDir = config.outDir;
 
 %% translate parameters into simulation-space
 if cue==0.5 && halfNeutralTrials==1
@@ -270,6 +275,8 @@ end
 %% store results
 % simulation settings
 data.nTrial = nTrial;
+data.subID = subID;
+data.nSub = nSub;
 data.trialDuration = trialDuration;
 data.cue = cue;
 data.coherence = coherence;
@@ -325,7 +332,16 @@ if saveDrifts==1
     data.visionDrifts = visionDrift;
 end
 
+%% save results
+
+if ~exist(outDir, 'dir')
+    mkdir(outDir);
 end
+
+outfile = [outDir '/' num2str(cue) 'cue_' num2str(coherence) 'coh_' num2str(threshold) 'thresh_' num2str(memoryThinning) 'thin_' num2str(nTrial) 'trial_' 'sub' num2str(subID) '.mat'];
+save(outfile, 'data')
+end
+
 
 
 

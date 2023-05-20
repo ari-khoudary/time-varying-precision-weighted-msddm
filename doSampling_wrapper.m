@@ -1,5 +1,5 @@
 %% specify simulation settings
-
+nSub = 3;
 nTrial = 10; % per cue
 cue = [0.5];
 coherence = [0.52];
@@ -30,33 +30,72 @@ saveCounters = 1;
 savePrecisions = 1;
 saveDrifts = 1;
 
-%% create config file
-config.nTrial = nTrial;
-config.cue = cue;
-config.coherence = coherence;
-config.threshold = threshold;
-config.memoryThinning = memoryThinning;
-config.visionThinning = visionThinning;
-config.vizPresentationRate = vizPresentationRate;
+% where do you want to save the results? (subdirectory of current dir)
+outDir = 'v3/test';
 
-% durations in seconds
-config.maxNoiseDuration = maxNoiseDuration;
-config.minNoiseDuration = minNoiseDuration;
-config.minSignalDuration = minSignalDuration;
-config.secondSignalMin = secondSignalMin;
-config.expLambda = expLambda;
+% create cell array to store config files
+nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
+configs = repmat({struct('myfield', {})}, 1, nCombo);
 
-config.halfNeutralTrials = halfNeutralTrials;
-config.flickerNoisePadding = flickerNoisePadding;
-config.flickerNoiseValue = flickerNoiseValue;
-config.saveEvidence = saveEvidence;
-config.saveFlickerNoise = saveFlickerNoise;
-config.saveAccumulators = saveAccumulators;
-config.saveCounters = saveCounters;
-config.savePrecisions = savePrecisions;
-config.saveDrifts = saveDrifts;
+
+%% create config files
+
+counter=0;
+for a = 1:length(coherence)
+    for b = 1:length(cue)
+        for c = 1:length(threshold)
+            for d = 1:length(memoryThinning)
+
+                counter=counter+1;
+                
+                config.nTrial = nTrial;
+                config.nSub = nSub;
+                config.coherence = coherence(a);
+                config.cue = cue(b);
+                config.threshold = threshold(c);
+                config.memoryThinning = memoryThinning(d);
+                config.visionThinning = visionThinning;
+                config.vizPresentationRate = vizPresentationRate;
+                
+                config.maxNoiseDuration = maxNoiseDuration;
+                config.minNoiseDuration = minNoiseDuration;
+                config.minSignalDuration = minSignalDuration;
+                config.secondSignalMin = secondSignalMin;
+                config.expLambda = expLambda;
+                
+                config.halfNeutralTrials = halfNeutralTrials;
+                config.flickerNoisePadding = flickerNoisePadding;
+                config.flickerNoiseValue = flickerNoiseValue;
+                config.saveEvidence = saveEvidence;
+                config.saveFlickerNoise = saveFlickerNoise;
+                config.saveAccumulators = saveAccumulators;
+                config.saveCounters = saveCounters;
+                config.savePrecisions = savePrecisions;
+                config.saveDrifts = saveDrifts;
+                config.outDir = outDir;
+
+                configs{counter} = config;
+            end
+        end
+    end
+end
 
 %% run simulation
 tic
-data = doSampling(config);
+counter=0;
+%data = repmat({struct('myfield', {})}, 1, nSub);
+for a = 1:length(coherence)
+    for b = 1:length(cue)
+        for c = 1:length(threshold)
+            for d = 1:length(memoryThinning)
+                counter=counter+1;
+                config = configs{counter};
+                for subj = 1:nSub
+                    config.subID = subj;
+                    doSampling(config);
+                end
+            end
+        end
+    end
+end
 toc
