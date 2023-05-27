@@ -127,12 +127,37 @@ for trial=1:nTrial
     flickerStream(lureIdx, trial) = -target;
 end
 
-% compute analytic solution for each trial
-expectedCounters = zeros(nTrial, 4);
-expectedPrecisions = zeros(nTrial, 2);
+% compute analytic solution for each trial 
+% start with memory 
+expectedAlphaMem = zeros(ceil(nFrames/memoryThinning), nTrial);
+expectedBetaMem = zeros(ceil(nFrames/memoryThinning), nTrial);
+pVec = linspace(0.01, 0.99, length(expectedAlphaMem));
+memEntropy = zeros(length(pVec), 1);
+for i = 1:length(pVec)
+    memEntropy(i) = computeEntropy(pVec(i));
+end
 
-expectedCounters(:, alphaMem_idx) = repmat(ceil(cue * (nFrames/memoryThinning)), [nTrial, 1]);
-expectedCounters(:, betaMem_idx) = repmat((nFrames/memoryThinning), [nTrial,1]) - expectedCounters(:, alphaMem_idx);
+nCueFrames = ceil(cue*length(expectedAlphaMem));
+expectedAlphaMem(1:nCueFrames, :) = 1;
+expectedBetaMem(1:length(expectedBetaMem)-nCueFrames, :) = 1;
+expectedAlphaMem = cumsum(Shuffle(expectedAlphaMem));
+expectedBetaMem = cumsum(Shuffle(expectedBetaMem));
+expectedMemPrecision = zeros(length(expectedAlphaMem), nTrial);
+for i = 1:nTrial
+    for j = 1:length(expectedAlphaMem)
+        expectedMemPrecision(j,i) = 1/sum((betapdf(p, expectedAlphaMem(j, i), expectedBetaMem(j, i))./sum(betapdf(p,expectedAlphaMem(j,i),expectedBetaMem(j,i)))) .* entropy');
+    end
+end
+
+% then with vision
+if flickerNoisePadding==1
+    expectedAlphaViz = zeros(nFrames/2, nTrial);
+    expectedBetaViz = expectedAlphaViz;
+else
+    expectedAlphaViz = zeros(nFrames, nTrial);
+    expectedBetaViz = expectedAlphaViz;
+end
+
 if flickerNoisePadding==1
     expectedCounters(:, alphaVis_idx) = ceil(coherence * (nFrames/2 - (noise1Frames+noise2Frames)));
     expectedCounters(:, betaVis_idx) = (nFrames/2 - (noise1Frames+noise2Frames)) - expectedCounters(:, alphaVis_idx);
@@ -141,8 +166,8 @@ else
     expectedCounters(:, betaVis_idx) = (nFrames - (noise1Frames+noise2Frames)) - expectedCounters(:, alphaVis_idx);
 end
 
-expectedPrecisions(:, 1) = 1./(betaVar(expectedCounters(:, alphaMem_idx), expectedCounters(:, betaMem_idx)));
-expectedPrecisions(:, 2) = 1./(betaVar(expectedCounters(:, alphaVis_idx), expectedCounters(:, betaVis_idx)));
+expectedPrecisions(:, 1) = 1./betaVar(expectedCounters(:, alphaMem_idx), expectedCounters(:, betaMem_idx));
+expectedPrecisions(:, 2) = 1./betaVar(expectedCounters(:, alphaVis_idx), expectedCounters(:, betaVis_idx));
 
 expectedAccuracy = expectedPrecisions(:, 2)>expectedPrecisions(:,1); 
 
@@ -167,10 +192,9 @@ for trial=1:nTrial
             end
 
             % compute normalized beta pdf
-            visualPDF = betapdf(p, alphaVis, betaVis) ./ sum(betapdf(p, alphaVis, betaVis));
+            visionPDF = betapdf(p, alphaVis, betaVis) ./ sum(betapdf(p, alphaVis, betaVis));
             % compute precision as inverse belief-weighted entropy
-            visualPrecision = 1/sum(visualPDF .* entropy');
-            visionPrecisions(frame, trial) = visualPrecision;
+            visionPrecisions(frame, trial) = 1/sum(visionPDF .* entropy');
         end
 
         % store counter values
@@ -188,8 +212,9 @@ for trial=1:nTrial
             % compute normalized beta pdf
             memoryPDF = betapdf(p, alphaMem, betaMem) ./ sum(betapdf(p, alphaMem, betaMem));
             % compute precision as inverse belief-weighted entropy
-            memoryPrecision = 1/sum(memoryPDF .* entropy');
-            memoryPrecisions(frame, trial) = memoryPrecision;
+            memoryPrecisions(frame, trial) = 1/sum(memoryPDF .* entropy');
+        else
+            memoryPrecisions(frame,trial) = memoryPrecisions(frame-1,trial);
         end
 
         % store counter values
@@ -197,9 +222,9 @@ for trial=1:nTrial
         counters(frame, betaMem_idx, trial) = betaMem;
 
         % compute relative precision evidence weights
-        visualDriftRate = visualPrecision / (visualPrecision + memoryPrecision);
-        memoryDriftRate = memoryPrecision / (visualPrecision + memoryPrecision);
-        visionDrift(frame, trial) = visualDriftRate;
+        visionDriftRate = visionPrecisions(frame,trial) / (visionPrecisions(frame,trial) + memoryPrecisions(frame,trial));
+        memoryDriftRate = memoryPrecisions(frame,trial) / (visionPrecisions(frame,trial) + memoryPrecisions(frame,trial));
+        visionDrift(frame, trial) = visionDriftRate;
         memoryDrift(frame, trial) = memoryDriftRate;
 
         % compute time-varying relative precision-weighted decision variable
@@ -207,22 +232,22 @@ for trial=1:nTrial
         visualSample = flickerStream(frame, trial);
 
         if frame == 1
-            visionAccumulator(frame, trial) = visualSample * visualDriftRate;
+            visionAccumulator(frame, trial) = visualSample * visionDriftRate;
             if mod(frame, memoryThinning)==1
                 memoryAccumulator(frame, trial) = memorySample * memoryDriftRate;
-                decisionVariable(frame, trial) = memorySample*memoryDriftRate + visualSample * visualDriftRate;
+                decisionVariable(frame, trial) = memorySample*memoryDriftRate + visualSample * visionDriftRate;
             else
-                decisionVariable(frame, trial) = visualSample*visualDriftRate;
+                decisionVariable(frame, trial) = visualSample*visionDriftRate;
             end
 
         else % for frames > 1
-            visionAccumulator(frame, trial) = visionAccumulator(frame-1, trial) + visualSample * visualDriftRate;
+            visionAccumulator(frame, trial) = visionAccumulator(frame-1, trial) + visualSample * visionDriftRate;
             if mod(frame, memoryThinning) == 1
                 memoryAccumulator(frame, trial) = memoryAccumulator(frame-1, trial) + memorySample * memoryDriftRate;
-                decisionVariable(frame, trial) = decisionVariable(frame-1, trial) + memorySample*memoryDriftRate + visualSample * visualDriftRate;
+                decisionVariable(frame, trial) = decisionVariable(frame-1, trial) + memorySample*memoryDriftRate + visualSample * visionDriftRate;
             else
                 memoryAccumulator(frame, trial) = memoryAccumulator(frame-1, trial);
-                decisionVariable(frame, trial) = decisionVariable(frame-1, trial) + visualSample*visualDriftRate;
+                decisionVariable(frame, trial) = decisionVariable(frame-1, trial) + visualSample*visionDriftRate;
             end
         end
     end

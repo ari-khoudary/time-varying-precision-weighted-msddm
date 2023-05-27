@@ -1,6 +1,6 @@
 %% specify simulation settings
 nSub = 3;
-nTrial = 10; % per cue
+nTrial = 20; % per cue
 cue = [0.5];
 coherence = [0.52];
 threshold = [3];
@@ -35,7 +35,7 @@ outDir = 'v3/test';
 
 % create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
-configs = repmat({struct('myfield', {})}, 1, nCombo);
+allConfigs = repmat({struct('myfield', {})}, 1, nCombo);
 
 
 %% create config files
@@ -74,7 +74,7 @@ for a = 1:length(coherence)
                 config.saveDrifts = saveDrifts;
                 config.outDir = outDir;
 
-                configs{counter} = config;
+                allConfigs{counter} = config;
             end
         end
     end
@@ -89,10 +89,10 @@ for a = 1:length(coherence)
         for c = 1:length(threshold)
             for d = 1:length(memoryThinning)
                 counter=counter+1;
-                config = configs{counter};
+                thisConfig = allConfigs{counter};
                 for subj = 1:nSub
-                    config.subID = subj;
-                    doSampling(config);
+                    thisConfig.subID = subj;
+                    doSampling(thisConfig);
                 end
             end
         end
