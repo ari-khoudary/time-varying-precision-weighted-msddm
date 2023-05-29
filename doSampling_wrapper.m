@@ -19,8 +19,10 @@ secondSignalMin = 0; % value to be added to signalMin to create a second signal 
 halfNeutralTrials = 1;
 
 % visual evidence noise
-flickerNoisePadding = 1; %logical; do you want to pad each signal frame with a noise frame?
-flickerNoiseValue = 'zero'; %string; how do you want to model noise frames? options are zeros, zero-centered gaussian, more to come
+flickerAdditiveNoise = 1;  % logical; do you want to add noise to each sample of visual evidence?
+flickerAdditiveNoiseValue = 'gaussian';  % string; what kind of noise do you want to add to each visual evidence sample? gaussian=zero-centered gaussian
+flickerNoisePadding = 1;  % logical; do you want to pad each signal frame with a noise frame?
+flickerPaddingValue = 'zero'; % string; how do you want to model noise frames? options are zeros, zero-centered gaussian, more to come
 
 % do you want to save frame-by-frame information for each trial?
 saveEvidence = 1;
@@ -33,7 +35,7 @@ saveDrifts = 1;
 % where do you want to save the results? (subdirectory of current dir)
 outDir = 'v3/test';
 
-% create cell array to store config files
+%% create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
 allConfigs = repmat({struct('myfield', {})}, 1, nCombo);
 
@@ -64,8 +66,10 @@ for a = 1:length(coherence)
                 config.expLambda = expLambda;
                 
                 config.halfNeutralTrials = halfNeutralTrials;
+                config.flickerAdditiveNoise = flickerAdditiveNoise;
+                config.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
                 config.flickerNoisePadding = flickerNoisePadding;
-                config.flickerNoiseValue = flickerNoiseValue;
+                config.flickerPaddingValue = flickerPaddingValue;
                 config.saveEvidence = saveEvidence;
                 config.saveFlickerNoise = saveFlickerNoise;
                 config.saveAccumulators = saveAccumulators;
@@ -83,7 +87,6 @@ end
 %% run simulation
 tic
 counter=0;
-%data = repmat({struct('myfield', {})}, 1, nSub);
 for a = 1:length(coherence)
     for b = 1:length(cue)
         for c = 1:length(threshold)

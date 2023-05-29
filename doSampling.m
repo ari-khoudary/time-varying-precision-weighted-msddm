@@ -16,7 +16,9 @@ minNoiseDuration = config.minNoiseDuration;
 minSignalDuration = config.minSignalDuration;
 secondSignalMin = config.secondSignalMin;
 halfNeutralTrials = config.halfNeutralTrials;
-flickerNoisePadding = config.flickerNoisePadding;
+flickerAdditiveNoise = config.flickerAdditiveNoise;
+flickerAdditiveNoiseValue = config.flickerAdditiveNoiseValue;
+flickerPaddingValue = config.flickerPaddingValue;
 flickerNoiseValue = config.flickerNoiseValue;
 
 % do you want to save any frame-by-frame information?
@@ -93,11 +95,15 @@ end
 memoryStream = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
 
 % create visual evidence stream
-% make noise matrix
-if strcmp(flickerNoiseValue,'zero')==1
+% make noise matrices
+if strcmp(flickerPaddingValue,'zero')==1
     flickerNoise = zeros(nFrames, nTrial);
-elseif strcmp(flickerNoiseValue, 'gaussian')==1
+elseif strcmp(flickerPaddingValue, 'gaussian')==1
     flickerNoise = normrnd(0,1, [nFrames, nTrial]);
+end
+
+if flickerAdditiveNoise==1 && strcmp(flickerAdditiveNoiseValue, 'gaussian')==1
+    flickerSampleNoise = normrnd(0,1, [nFrames,nTrial]);
 end
 
 % initialize stream
@@ -123,19 +129,19 @@ for trial=1:nTrial
     else
         target=-1;
     end
-    flickerStream(targetIdx, trial) = target;
-    flickerStream(lureIdx, trial) = -target;
+    if flickerAdditiveNoise==0
+        flickerStream(targetIdx, trial) = target;
+        flickerStream(lureIdx, trial) = -target;
+    else
+        flickerStream(targetIdx, trial) = target + flickerSampleNoise(targetIdx, trial);
+        flickerStream(lureIdx, trial) = -target + flickerSampleNoise(lureIdx, trial);
+    end
 end
 
 % compute analytic solution for each trial 
 % start with memory 
 expectedAlphaMem = zeros(ceil(nFrames/memoryThinning), nTrial);
 expectedBetaMem = zeros(ceil(nFrames/memoryThinning), nTrial);
-pVec = linspace(0.01, 0.99, length(expectedAlphaMem));
-memEntropy = zeros(length(pVec), 1);
-for i = 1:length(pVec)
-    memEntropy(i) = computeEntropy(pVec(i));
-end
 
 nCueFrames = ceil(cue*length(expectedAlphaMem));
 expectedAlphaMem(1:nCueFrames, :) = 1;
@@ -150,12 +156,18 @@ for i = 1:nTrial
 end
 
 % then with vision
+expectedAlphaViz = zeros(nFrames, nTrial);
+expectedBetaViz = expectedAlphaViz;
+nTargetFrames = ceil(coherence * (length(expectedAlphaViz) - (noise1Frames+noise2Frames)));
+nLureFrames = ceil((1-coherence) * (length(expectedAlphaViz) - (noise1Frames+noise2Frames)));
 if flickerNoisePadding==1
-    expectedAlphaViz = zeros(nFrames/2, nTrial);
-    expectedBetaViz = expectedAlphaViz;
-else
-    expectedAlphaViz = zeros(nFrames, nTrial);
-    expectedBetaViz = expectedAlphaViz;
+    nTargetFrames = ceil(0.5*nTargetFrames);
+    nLureFrames = ceil(0.5*nLureFrames);
+end
+
+for i=1:nTrial
+    expectedAlphaViz(1:nTargetFrames(i), i) = 1;
+    expectedBetaViz(1:nLureFrames(i), i) = 1;
 end
 
 if flickerNoisePadding==1
@@ -166,10 +178,7 @@ else
     expectedCounters(:, betaVis_idx) = (nFrames - (noise1Frames+noise2Frames)) - expectedCounters(:, alphaVis_idx);
 end
 
-expectedPrecisions(:, 1) = 1./betaVar(expectedCounters(:, alphaMem_idx), expectedCounters(:, betaMem_idx));
-expectedPrecisions(:, 2) = 1./betaVar(expectedCounters(:, alphaVis_idx), expectedCounters(:, betaVis_idx));
 
-expectedAccuracy = expectedPrecisions(:, 2)>expectedPrecisions(:,1); 
 
 %% run simulation
 
