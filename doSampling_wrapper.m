@@ -1,10 +1,10 @@
 %% specify simulation settings
 nSub = 3;
-nTrial = 20; % per cue
-cue = [0.5];
+nTrial = 100; % per cue
+cue = [0.7];
 coherence = [0.52];
 threshold = [3];
-memoryThinning = 12;
+memoryThinning = 2;
 visionThinning = 1;
 vizPresentationRate = 1/60;
 
@@ -93,6 +93,7 @@ for a = 1:length(coherence)
             for d = 1:length(memoryThinning)
                 counter=counter+1;
                 thisConfig = allConfigs{counter};
+                sprintf(['running coherence=' num2str(coherence(a)) ', cue=' num2str(cue(b)) ', threshold=' num2str(threshold(c)) ' and thinning=' num2str(memoryThinning(d))])
                 for subj = 1:nSub
                     thisConfig.subID = subj;
                     doSampling(thisConfig);
