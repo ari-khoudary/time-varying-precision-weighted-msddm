@@ -18,8 +18,8 @@ secondSignalMin = config.secondSignalMin;
 halfNeutralTrials = config.halfNeutralTrials;
 flickerAdditiveNoise = config.flickerAdditiveNoise;
 flickerAdditiveNoiseValue = config.flickerAdditiveNoiseValue;
+flickerNoisePadding = config.flickerNoisePadding;
 flickerPaddingValue = config.flickerPaddingValue;
-flickerNoiseValue = config.flickerNoiseValue;
 
 % do you want to save any frame-by-frame information?
 saveEvidence = config.saveEvidence;
@@ -139,27 +139,15 @@ for trial=1:nTrial
 end
 
 % compute analytic solution for each trial 
-% start with memory 
-expectedAlphaMem = zeros(ceil(nFrames/memoryThinning), nTrial);
-expectedBetaMem = zeros(ceil(nFrames/memoryThinning), nTrial);
-
-nCueFrames = ceil(cue*length(expectedAlphaMem));
-expectedAlphaMem(1:nCueFrames, :) = 1;
-expectedBetaMem(1:length(expectedBetaMem)-nCueFrames, :) = 1;
-expectedAlphaMem = cumsum(Shuffle(expectedAlphaMem));
-expectedBetaMem = cumsum(Shuffle(expectedBetaMem));
-expectedMemPrecision = zeros(length(expectedAlphaMem), nTrial);
-for i = 1:nTrial
-    for j = 1:length(expectedAlphaMem)
-        expectedMemPrecision(j,i) = 1/sum((betapdf(p, expectedAlphaMem(j, i), expectedBetaMem(j, i))./sum(betapdf(p,expectedAlphaMem(j,i),expectedBetaMem(j,i)))) .* entropy');
-    end
-end
+% start with memory -- pseudocode is in notebook
+expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
 
 % then with vision
 expectedAlphaViz = zeros(nFrames, nTrial);
 expectedBetaViz = expectedAlphaViz;
-nTargetFrames = ceil(coherence * (length(expectedAlphaViz) - (noise1Frames+noise2Frames)));
-nLureFrames = ceil((1-coherence) * (length(expectedAlphaViz) - (noise1Frames+noise2Frames)));
+nSignalFrames = nFrames - (noise1Frames+noise2Frames);
+nTargetFrames = ceil(coherence * nSignalFrames);
+nLureFrames = ceil((1-coherence) * nSignalFrames);
 if flickerNoisePadding==1
     nTargetFrames = ceil(0.5*nTargetFrames);
     nLureFrames = ceil(0.5*nLureFrames);
@@ -170,18 +158,8 @@ for i=1:nTrial
     expectedBetaViz(1:nLureFrames(i), i) = 1;
 end
 
-if flickerNoisePadding==1
-    expectedCounters(:, alphaVis_idx) = ceil(coherence * (nFrames/2 - (noise1Frames+noise2Frames)));
-    expectedCounters(:, betaVis_idx) = (nFrames/2 - (noise1Frames+noise2Frames)) - expectedCounters(:, alphaVis_idx);
-else
-    expectedCounters(:, alphaVis_idx) = ceil(coherence * (nFrames - (noise1Frames+noise2Frames)));
-    expectedCounters(:, betaVis_idx) = (nFrames - (noise1Frames+noise2Frames)) - expectedCounters(:, alphaVis_idx);
-end
-
-
-
 %% run simulation
-
+tic
 for trial=1:nTrial
     % initialize counters
     alphaMem = 1;
@@ -305,6 +283,7 @@ for trial=1:nTrial
         end
     end
 end
+toc
 
 %% store results
 % simulation settings
@@ -328,14 +307,16 @@ data.noise1Frames = noise1Frames;
 data.noise2Frames = noise2Frames;
 data.noise2Onset = noise2Onset;
 data.signal1Frames = signal1Frames;
-data.flickerNoiseValue = flickerNoiseValue;
+data.flickerAdditiveNoise = flickerAdditiveNoise;
+data.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
 data.flickerNoisePadding = flickerNoisePadding;
+data.flickerPaddingValue = flickerPaddingValue;
 data.counters = counters;
 
 % behavior
 data.choices = choices;
 data.RT = RTs;
-data.expectedAccuracy = expectedAccuracy;
+%data.expectedAccuracy = expectedAccuracy;
 
 % optional frame-by-frame info
 if saveEvidence==1
