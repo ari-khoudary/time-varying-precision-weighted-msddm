@@ -63,8 +63,171 @@ for i=1:length(allData)
 end
 
 clear sid trials cues cohs threshs thins frames cong noise1 noise2 noise2o sig1 rawC forcedC rt
-%% add fields to be populated
 
+% and convery to table 
+dataTable = struct2table(longData);
 
+%% make plotting variables
+nCells = length(allData) / allData(1).nSub;
+cueLevels = unique(dataTable.cue);
+cueCat = categorical(cueLevels);
+coherenceLevels = unique(dataTable.coherence);
+thresholdLevels = unique(dataTable.threshold);
+thinningLevels = unique(dataTable.memoryThinning);
 
+%% plot summary effects of threshold & coherence
+accPlot = figure;
+accPlot.Name = 'threshold & accuracy';
+rtPlot = figure;
+rtPlot.Name = 'threshold & RT';
+counter = 0;
 
+for i = 1:length(coherenceLevels)
+    for j = 1:length(thresholdLevels)
+        titleString = sprintf('coherence=%.2f, threshold=%i', coherenceLevels(i), thresholdLevels(j));
+        for k = 1:length(cueLevels)
+            if cueLevels(k) == 0.5
+                forcedChoice = dataTable.forcedChoice(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.threshold==thresholdLevels(j), :);
+                choiceSEM = std(forcedChoice) / sqrt(length(unique(dataTable.subID)));
+                rt = dataTable.RT(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.threshold==thresholdLevels(j), :);
+                rtSEM = std(rt) / sqrt(length(unique(dataTable.subID)));
+
+                figure(accPlot)
+                subplot(length(thresholdLevels), length(coherenceLevels), counter+1)
+                hold on
+                ylim([0 1.5])
+                xlim([0.3 1])
+                xticks([0.3:0.1:1])
+                yline(0.5, '--')
+                yline(1, '-')
+                grid on
+                errorbar(cueLevels(k), mean(forcedChoice), choiceSEM, '.', 'MarkerSize', 20, 'LineWidth', 2)
+                xlabel('cue')
+                ylabel('proportion correct')
+                title(titleString);
+
+                figure(rtPlot)
+                subplot(length(thresholdLevels), length(coherenceLevels), counter+1)
+                hold on
+                ylim([min(rt)-20 max(rt)+20])
+                xlim([0.3 1])
+                xticks([0.3:0.1:1])
+                grid on
+                errorbar(cueLevels(k), mean(rt), rtSEM, '.', 'MarkerSize', 20, 'LineWidth', 2)
+                xlabel('cue')
+                ylabel('RT')
+                title(titleString)
+            else
+                congForcedChoice = dataTable.forcedChoice(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.threshold==thresholdLevels(j) & dataTable.congruent==1, :);
+                congRT = dataTable.RT(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.threshold==thresholdLevels(j) & dataTable.congruent==1, :);
+                incongForcedChoice = dataTable.forcedChoice(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.threshold==thresholdLevels(j) & dataTable.congruent==0, :);
+                incongRT = dataTable.RT(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.threshold==thresholdLevels(j) & dataTable.congruent==0, :);
+                congChoiceSEM = std(congForcedChoice) / sqrt(length(unique(dataTable.subID)));
+                incongChoiceSEM = std(incongForcedChoice) / sqrt(length(unique(dataTable.subID)));
+                congRTSEM = std(congRT) / sqrt(length(unique(dataTable.subID)));
+                incongRTSEM = std(incongRT) / sqrt(length(unique(dataTable.subID)));
+
+                figure(accPlot)
+                h=subplot(length(thresholdLevels), length(coherenceLevels), counter+1);
+                hold on
+                errorbar(cueLevels(k), mean(congForcedChoice), congChoiceSEM, '.', 'MarkerSize', 20, 'LineWidth', 2)
+                errorbar(cueLevels(k), mean(incongForcedChoice), incongChoiceSEM, '.', 'MarkerSize', 20, 'LineWidth', 2)
+                if i==1 && j==1
+                    legend({'', '', 'neutral', 'congruent', 'incongruent'}, 'Location', 'NorthWest');
+                end
+
+                figure(rtPlot)
+                subplot(length(thresholdLevels), length(coherenceLevels), counter+1)
+                hold on
+                errorbar(cueLevels(k), mean(congRT), congRTSEM, '.', 'MarkerSize', 20, 'LineWidth', 2)
+                errorbar(cueLevels(k), mean(incongRT), incongRTSEM, '.', 'MarkerSize', 20, 'LineWidth', 2)
+                if i==1 && j==1
+                    legend({'neutral', 'congruent', 'incongruent'}, 'Location', 'NorthWest')
+                end
+
+            end
+        end
+        counter=counter+1;
+    end
+end
+
+%% plot summary effects of thinning & coherence
+accPlot = figure;
+accPlot.Name = 'thinning & accuracy';
+rtPlot = figure;
+rtPlot.Name = 'thinning & RT';
+counter = 0;
+
+for i = 1:length(coherenceLevels)
+    for j = 1:length(thinningLevels)
+        titleString = sprintf('coherence=%.2f, thinning=%i', coherenceLevels(i), thinningLevels(j));
+        for k = 1:length(cueLevels)
+            if cueLevels(k) == 0.5
+                forcedChoice = dataTable.forcedChoice(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.memoryThinning==thinningLevels(j), :);
+                choiceSEM = std(forcedChoice) / sqrt(length(unique(dataTable.subID)));
+                rt = dataTable.RT(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.memoryThinning==thinningLevels(j), :);
+                rtSEM = std(rt) / sqrt(length(unique(dataTable.subID)));
+
+                figure(accPlot)
+                subplot(length(thinningLevels), length(coherenceLevels), counter+1)
+                hold on
+                ylim([0 1.5])
+                xlim([0.3 1])
+                xticks([0.3:0.1:1])
+                yticks([0 0.25 0.5 0.75 1 1.25])
+                yline(0.5, '--')
+                yline(1, '-')
+                grid on
+                errorbar(cueLevels(k), mean(forcedChoice), choiceSEM, '*', 'MarkerSize', 10, 'LineWidth', 2)
+                xlabel('cue')
+                ylabel('proportion correct')
+                title(titleString);
+
+                figure(rtPlot)
+                subplot(length(thinningLevels), length(coherenceLevels), counter+1)
+                hold on
+                ylim([min(rt)-20 max(rt)+20])
+                xlim([0.3 1])
+                xticks([0.3:0.1:1])
+                grid on
+                errorbar(cueLevels(k), mean(rt), rtSEM, '*', 'MarkerSize', 10, 'LineWidth', 2)
+                xlabel('cue')
+                ylabel('RT')
+                title(titleString)
+            else
+                congForcedChoice = dataTable.forcedChoice(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.memoryThinning==thinningLevels(j) & dataTable.congruent==1, :);
+                congRT = dataTable.RT(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.memoryThinning==thinningLevels(j) & dataTable.congruent==1, :);
+                incongForcedChoice = dataTable.forcedChoice(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.memoryThinning==thinningLevels(j) & dataTable.congruent==0, :);
+                incongRT = dataTable.RT(dataTable.cue==cueLevels(k) & dataTable.coherence==coherenceLevels(i) & dataTable.memoryThinning==thinningLevels(j) & dataTable.congruent==0, :);
+                congChoiceSEM = std(congForcedChoice) / sqrt(length(unique(dataTable.subID)));
+                incongChoiceSEM = std(incongForcedChoice) / sqrt(length(unique(dataTable.subID)));
+                congRTSEM = std(congRT) / sqrt(length(unique(dataTable.subID)));
+                incongRTSEM = std(incongRT) / sqrt(length(unique(dataTable.subID)));
+
+                figure(accPlot)
+                h=subplot(length(thinningLevels), length(coherenceLevels), counter+1);
+                hold on
+                errorbar(cueLevels(k), mean(congForcedChoice), congChoiceSEM, '*', 'MarkerSize', 10, 'LineWidth', 2)
+                errorbar(cueLevels(k), mean(incongForcedChoice), incongChoiceSEM, '*', 'MarkerSize', 10, 'LineWidth', 2)
+                if i==1 && j==1
+                    legend({'', '', 'neutral', 'congruent', 'incongruent'}, 'Location', 'NorthWest');
+                end
+
+                figure(rtPlot)
+                subplot(length(thinningLevels), length(coherenceLevels), counter+1)
+                hold on
+                errorbar(cueLevels(k), mean(congRT), congRTSEM, '*', 'MarkerSize', 10, 'LineWidth', 2)
+                errorbar(cueLevels(k), mean(incongRT), incongRTSEM, '*', 'MarkerSize', 10, 'LineWidth', 2)
+                if i==1 && j==1
+                    legend({'neutral', 'congruent', 'incongruent'}, 'Location', 'NorthWest')
+                end
+
+            end
+        end
+        counter=counter+1;
+    end
+end
+
+%% plot dynamic effects of threshold & coherence
+
+%% plot dynamic effects of thinning & coherence
