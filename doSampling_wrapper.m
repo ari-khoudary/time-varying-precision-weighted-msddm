@@ -1,19 +1,21 @@
 %% specify simulation settings
-nSub = 3;
-nTrial = 100; % per cue
+clear
+nSub = 1;
+nTrial = 10; % per cue
 cue = [0.7];
-coherence = [0.52];
-threshold = [3];
-memoryThinning = 2;
+coherence = [0.5];
+threshold = [9];
+memoryThinning = [4];
 visionThinning = 1;
 vizPresentationRate = 1/60;
+noisePeriods = 0; % logical: do you want 2 noise periods?
 
 % durations in seconds
 expLambda = 0.15;
-maxNoiseDuration = 2;
-minNoiseDuration = 1;
+maxNoiseDuration = 0.001;
+minNoiseDuration = 0;
 minSignalDuration = 0.375;
-secondSignalMin = 0; % value to be added to signalMin to create a second signal period of additional length
+secondSignalMin = 1; % value to be added to signalMin to create a second signal period of additional length
 
 % half neutral trials (boolean)
 halfNeutralTrials = 1;
@@ -58,6 +60,7 @@ for a = 1:length(coherence)
                 config.memoryThinning = memoryThinning(d);
                 config.visionThinning = visionThinning;
                 config.vizPresentationRate = vizPresentationRate;
+                config.noisePeriods = noisePeriods;
                 
                 config.maxNoiseDuration = maxNoiseDuration;
                 config.minNoiseDuration = minNoiseDuration;
@@ -103,3 +106,16 @@ for a = 1:length(coherence)
     end
 end
 toc
+
+%% plot results
+
+doSampling_summaryPlots;
+
+
+
+
+
+
+
+
+

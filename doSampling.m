@@ -10,6 +10,7 @@ threshold = config.threshold;
 memoryThinning = config.memoryThinning;
 visionThinning = config.visionThinning;
 vizPresentationRate = config.vizPresentationRate;
+noisePeriods = config.noisePeriods;
 expLambda = config.expLambda;
 maxNoiseDuration = config.maxNoiseDuration;
 minNoiseDuration = config.minNoiseDuration;
@@ -95,46 +96,51 @@ end
 memoryStream = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
 
 % create visual evidence stream
-% make noise matrices
-if strcmp(flickerPaddingValue,'zero')==1
-    flickerNoise = zeros(nFrames, nTrial);
-elseif strcmp(flickerPaddingValue, 'gaussian')==1
-    flickerNoise = normrnd(0,1, [nFrames, nTrial]);
-end
-
-if flickerAdditiveNoise==1 && strcmp(flickerAdditiveNoiseValue, 'gaussian')==1
-    flickerSampleNoise = normrnd(0,1, [nFrames,nTrial]);
-end
-
-% initialize stream
-if flickerNoisePadding==0
-    flickerStream = ones(nFrames/2, nTrial);
+if noisePeriods==0
+    flickerStream = (binornd(1,coherence, [nFrames,nTrial])*2-1) + normrnd(0,1,[nFrames,nTrial]);
+    flickerStream(:, congruentTrials+1:nTrial) = -1*flickerStream(:, congruentTrials+1:nTrial);
 else
-    flickerStream = repmat([1; NaN], nFrames/2, nTrial);
-    noiseBool = isnan(flickerStream);
-    flickerStream(noiseBool) = flickerNoise(noiseBool);
-end
-
-% populate according to coherence & noise frames
-for trial=1:nTrial
-    flickerStream(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial), trial);
-    flickerStream(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial) = flickerNoise(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial);
-    imgIdx = find(flickerStream(:, trial)==1);
-    nImgFrames = length(imgIdx);
-    nTargetFrames = ceil(nImgFrames*coherence);
-    targetIdx = randsample(imgIdx, nTargetFrames);
-    lureIdx = setdiff(imgIdx, targetIdx);
-    if trial <= congruentTrials
-        target=1;
-    else
-        target=-1;
+    % make noise matrices
+    if strcmp(flickerPaddingValue,'zero')==1
+        flickerNoise = zeros(nFrames, nTrial);
+    elseif strcmp(flickerPaddingValue, 'gaussian')==1
+        flickerNoise = normrnd(0,1, [nFrames, nTrial]);
     end
-    if flickerAdditiveNoise==0
-        flickerStream(targetIdx, trial) = target;
-        flickerStream(lureIdx, trial) = -target;
+
+    if flickerAdditiveNoise==1 && strcmp(flickerAdditiveNoiseValue, 'gaussian')==1
+        flickerSampleNoise = normrnd(0,1, [nFrames,nTrial]);
+    end
+
+    % initialize stream
+    if flickerNoisePadding==0
+        flickerStream = ones(nFrames/2, nTrial);
     else
-        flickerStream(targetIdx, trial) = target + flickerSampleNoise(targetIdx, trial);
-        flickerStream(lureIdx, trial) = -target + flickerSampleNoise(lureIdx, trial);
+        flickerStream = repmat([1; NaN], floor(nFrames/2), nTrial);
+        noiseBool = isnan(flickerStream);
+        flickerStream(noiseBool) = flickerNoise(noiseBool);
+    end
+
+    % populate according to coherence & noise frames
+    for trial=1:nTrial
+        flickerStream(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial), trial);
+        flickerStream(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial) = flickerNoise(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial);
+        imgIdx = find(flickerStream(:, trial)==1);
+        nImgFrames = length(imgIdx);
+        nTargetFrames = ceil(nImgFrames*coherence);
+        targetIdx = randsample(imgIdx, nTargetFrames);
+        lureIdx = setdiff(imgIdx, targetIdx);
+        if trial <= congruentTrials
+            target=1;
+        else
+            target=-1;
+        end
+        if flickerAdditiveNoise==0
+            flickerStream(targetIdx, trial) = target;
+            flickerStream(lureIdx, trial) = -target;
+        else
+            flickerStream(targetIdx, trial) = target + flickerSampleNoise(targetIdx, trial);
+            flickerStream(lureIdx, trial) = -target + flickerSampleNoise(lureIdx, trial);
+        end
     end
 end
 
@@ -143,20 +149,20 @@ end
 expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
 
 % then with vision
-expectedAlphaViz = zeros(nFrames, nTrial);
-expectedBetaViz = expectedAlphaViz;
-nSignalFrames = nFrames - (noise1Frames+noise2Frames);
-nTargetFrames = ceil(coherence * nSignalFrames);
-nLureFrames = ceil((1-coherence) * nSignalFrames);
-if flickerNoisePadding==1
-    nTargetFrames = ceil(0.5*nTargetFrames);
-    nLureFrames = ceil(0.5*nLureFrames);
-end
-
-for i=1:nTrial
-    expectedAlphaViz(1:nTargetFrames(i), i) = 1;
-    expectedBetaViz(1:nLureFrames(i), i) = 1;
-end
+% expectedAlphaViz = zeros(nFrames, nTrial);
+% expectedBetaViz = expectedAlphaViz;
+% nSignalFrames = nFrames - (noise1Frames+noise2Frames);
+% nTargetFrames = ceil(coherence * nSignalFrames);
+% nLureFrames = ceil((1-coherence) * nSignalFrames);
+% if flickerNoisePadding==1
+%     nTargetFrames = ceil(0.5*nTargetFrames);
+%     nLureFrames = ceil(0.5*nLureFrames);
+% end
+% 
+% for i=1:nTrial
+%     expectedAlphaViz(1:nTargetFrames(i), i) = 1;
+%     expectedBetaViz(1:nLureFrames(i), i) = 1;
+% end
 
 %% run simulation
 tic
@@ -307,6 +313,7 @@ data.noise1Frames = noise1Frames;
 data.noise2Frames = noise2Frames;
 data.noise2Onset = noise2Onset;
 data.signal1Frames = signal1Frames;
+data.secondSignalMin = secondSignalMin;
 data.flickerAdditiveNoise = flickerAdditiveNoise;
 data.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
 data.flickerNoisePadding = flickerNoisePadding;
