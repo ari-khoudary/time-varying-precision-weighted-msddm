@@ -61,7 +61,6 @@ end
 noise1Frames = Shuffle(noiseFrames + noiseMin);
 noise2Frames = Shuffle(noise1Frames);
 signal1Frames = Shuffle(noiseFrames + signalMin);
-noise2Onset = noise1Frames + signal1Frames;
 if noisePeriods==0
     nFrames = noNoiseTrialDuration / vizPresentationRate;
 else
@@ -71,7 +70,6 @@ end
 if mod(nFrames,2)>0
     nFrames=nFrames+1;
 end
-signal2Onset = noise1Frames + signal1Frames + noise2Frames + 1;
 signal2Frames = nFrames - (noise1Frames + noise2Frames + signal1Frames);
 trialDuration = nFrames*vizPresentationRate;
 
@@ -103,6 +101,15 @@ end
 
 % create memory evidence stream
 memoryStream = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
+% define analytic solution for memory
+expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
+
+% define viz evidence changepoints 
+signal1Onsets = noise1Frames + 1;
+noise2Onsets = noise1Frames + signal1Frames + 1;
+signal2Onsets = noise1Frames + signal1Frames + noise2Frames + 1;
+% initialize analytic solution matrix for vision
+expectedVizValue = zeros(nFrames, nTrial);
 
 % create visual evidence stream
 if noisePeriods==0
@@ -132,7 +139,7 @@ else
     % populate according to coherence & noise frames
     for trial=1:nTrial
         flickerStream(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial), trial);
-        flickerStream(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial) = flickerNoise(noise2Onset(trial):noise2Onset(trial)+noise2Frames(trial), trial);
+        flickerStream(noise2Onsets(trial):signal1Onsets(trial)-1, trial) = flickerNoise(noise2Onsets(trial):signal1Onsets(trial)-1, trial);
         imgIdx = find(flickerStream(:, trial)==1);
         nImgFrames = length(imgIdx);
         nTargetFrames = ceil(nImgFrames*coherence);
@@ -150,19 +157,16 @@ else
             flickerStream(targetIdx, trial) = target + flickerSampleNoise(targetIdx, trial);
             flickerStream(lureIdx, trial) = -target + flickerSampleNoise(lureIdx, trial);
         end
+
+        % compute analytic solution for each trial
+        sig1EV = (repelem([1:ceil(signal1Frames(trial)/2)]', 2)*coherence);
+        sig2EV = (repelem([1:ceil(signal2Frames(trial)/2)]', 2)*coherence) + sig1EV(signal1Frames(trial));
+        expectedVizValue(noise1Frames(trial)+1:noise2Onsets(trial)-1, trial) = sig1EV(1:signal1Frames(trial));
+        expectedVizValue(noise2Onsets(trial):signal2Onsets(trial)-1, trial) = sig1EV(signal1Frames(trial));
+        expectedVizValue(signal2Onsets(trial):nFrames, trial) = sig2EV(1:signal2Frames(trial));
     end
 end
 
-% compute analytic solution for each trial: cumulative "evidence" in favor
-% of one option over the course of each trial
-expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
-expectedVizValue = zeros(nFrames, nTrial);
-for i=1:nTrial
-    expectedVizValue(noise1Frames(trial)+1:noise2Onset(trial)-1, trial) = repelem([1:signal1Frames(trial)/2]', 2)*coherence;
-    expectedVizValue(noise2Onset(trial):signal2Onset(trial)-1) = expectedVizValue(noise2Onset(trial)-1, trial);
-    sig2EV = (repelem([1:ceil(signal2Frames(trial)/2)]', 2)*coherence) + expectedVizValue(noise2Onset(trial), trial);
-    expectedVizValue(signal2Onset(trial):nFrames, trial) = sig2EV(1:signal2Frames);
-end
 
 %% run simulation
 tic
@@ -311,7 +315,7 @@ data.minNoiseDuration = minNoiseDuration;
 data.minSignalDuration = minSignalDuration;
 data.noise1Frames = noise1Frames;
 data.noise2Frames = noise2Frames;
-data.noise2Onset = noise2Onset;
+data.noise2Onset = noise2Onsets;
 data.signal1Frames = signal1Frames;
 data.secondSignalMin = secondSignalMin;
 data.flickerAdditiveNoise = flickerAdditiveNoise;
