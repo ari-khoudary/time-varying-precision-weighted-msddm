@@ -62,9 +62,18 @@ noise1Frames = Shuffle(noiseFrames + noiseMin);
 noise2Frames = Shuffle(noise1Frames);
 signal1Frames = Shuffle(noiseFrames + signalMin);
 noise2Onset = noise1Frames + signal1Frames;
-nFrames = max(signal1Frames) + 2*maxNoiseFrames + signalMin + secondSignalMin;
+if noisePeriods==0
+    nFrames = noNoiseTrialDuration / vizPresentationRate;
+else
+    nFrames = max(signal1Frames) + 2*maxNoiseFrames + signalMin + secondSignalMin;
+end
+% ensure an event amount of frames for computational convenience
+if mod(nFrames,2)>0
+    nFrames=nFrames+1;
+end
+signal2Onset = noise1Frames + signal1Frames + noise2Frames + 1;
+signal2Frames = nFrames - (noise1Frames + noise2Frames + signal1Frames);
 trialDuration = nFrames*vizPresentationRate;
-
 
 %% create arrays to hold values
 choices = zeros(nTrial, 2);
@@ -115,7 +124,7 @@ else
     if flickerNoisePadding==0
         flickerStream = ones(nFrames/2, nTrial);
     else
-        flickerStream = repmat([1; NaN], floor(nFrames/2), nTrial);
+        flickerStream = repmat([1; NaN], nFrames/2, nTrial);
         noiseBool = isnan(flickerStream);
         flickerStream(noiseBool) = flickerNoise(noiseBool);
     end
@@ -144,25 +153,16 @@ else
     end
 end
 
-% compute analytic solution for each trial 
-% start with memory -- pseudocode is in notebook
+% compute analytic solution for each trial: cumulative "evidence" in favor
+% of one option over the course of each trial
 expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
-
-% then with vision
-% expectedAlphaViz = zeros(nFrames, nTrial);
-% expectedBetaViz = expectedAlphaViz;
-% nSignalFrames = nFrames - (noise1Frames+noise2Frames);
-% nTargetFrames = ceil(coherence * nSignalFrames);
-% nLureFrames = ceil((1-coherence) * nSignalFrames);
-% if flickerNoisePadding==1
-%     nTargetFrames = ceil(0.5*nTargetFrames);
-%     nLureFrames = ceil(0.5*nLureFrames);
-% end
-% 
-% for i=1:nTrial
-%     expectedAlphaViz(1:nTargetFrames(i), i) = 1;
-%     expectedBetaViz(1:nLureFrames(i), i) = 1;
-% end
+expectedVizValue = zeros(nFrames, nTrial);
+for i=1:nTrial
+    expectedVizValue(noise1Frames(trial)+1:noise2Onset(trial)-1, trial) = repelem([1:signal1Frames(trial)/2]', 2)*coherence;
+    expectedVizValue(noise2Onset(trial):signal2Onset(trial)-1) = expectedVizValue(noise2Onset(trial)-1, trial);
+    sig2EV = (repelem([1:ceil(signal2Frames(trial)/2)]', 2)*coherence) + expectedVizValue(noise2Onset(trial), trial);
+    expectedVizValue(signal2Onset(trial):nFrames, trial) = sig2EV(1:signal2Frames);
+end
 
 %% run simulation
 tic
