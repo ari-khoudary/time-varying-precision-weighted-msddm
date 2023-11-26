@@ -91,6 +91,7 @@ summaryTable.lowerCI_RT = summaryTable.mean_RT - semTable.Fun1_RT;
 summaryTable.nanRT = groupsummary(dataTable, ["congruent", "cue", "coherence", "threshold", "memoryThinning"], 'nummissing', 'rawChoice').nummissing_rawChoice;
 
 %% plot summary effects of threshold on accuracy & RT (gramm method)
+% yes this should probably be a function or a for-loop but i am trying not to let the perfect be the enemy of the good
 
 % raw choice accuracy
 f(1,1) = gramm('x', summaryTable.coherence, 'y', summaryTable.mean_rawChoice, ...
@@ -119,7 +120,7 @@ f(1,2).geom_interval('geom', 'errorbar');
 f(1,2).geom_line();
 
 
-% proportion of not hitting threshold
+% proportion not hitting threshold
 f(2,1) = gramm('x', summaryTable.coherence, 'y', summaryTable.nanRT,...
     'color', summaryTable.cue, 'linestyle', summaryTable.congruent);
 f(2,1).set_names('x', 'coherence', 'y', 'count', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threshold');
@@ -142,14 +143,27 @@ f(2,2).geom_point();
 f(2,2).geom_interval('geom', 'errorbar');
 f(2,2).geom_line();
 
-figure('Name', 'Effects of threshold on accuracy & RT', 'WindowState', 'maximized');
+figure('Name', 'Effects of threshold on accuracy & RT');
 f.draw();
 
 
+%% plot effects of threshold on RT distributions
 
+clear f
+f(1,1) = gramm('x', dataTable.RT, 'color', dataTable.cue, 'linestyle', dataTable.congruent);
+f(1,1).set_names('x', 'RT', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold', 'row', 'coherence');
+f(1,1).set_title(['all trials (N=' num2str(height(dataTable)) ')']);
+f(1,1).facet_grid(num2cell(num2str(dataTable.coherence), 2), num2cell(num2str(dataTable.threshold), 2));
+f(1,1).stat_bin('nbins', 8, 'geom', 'line');
 
+f(1,2) = gramm('x', dataTable.RT, 'color', dataTable.cue, 'linestyle', dataTable.congruent, 'subset', ~isnan(dataTable.rawChoice));
+f(1,2).set_names('x', 'RT', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold', 'row', 'coherence');
+f(1,2).set_title(['only trials when DV hit threshold (N=' num2str(height(dataTable.RT(~isnan(dataTable.rawChoice)))) ')']);
+f(1,2).facet_grid(num2cell(num2str(dataTable.coherence), 2), num2cell(num2str(dataTable.threshold), 2));
+f(1,2).stat_bin('nbins', 20, 'geom', 'overlaid_bar', 'fill', 'transparent');
 
-
+figure('Name', 'Effect of threshold on RT distributions');
+f.draw();
 
 
 
