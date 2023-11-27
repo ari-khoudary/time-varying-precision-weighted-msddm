@@ -26,6 +26,7 @@ flickerPaddingValue = config.flickerPaddingValue;
 saveEvidence = config.saveEvidence;
 saveFlickerNoise = config.saveFlickerNoise;
 saveAccumulators = config.saveAccumulators;
+saveDV = config.saveDV;
 saveCounters = config.saveCounters;
 savePrecisions = config.savePrecisions;
 saveDrifts = config.saveDrifts;
@@ -74,8 +75,9 @@ signal2Frames = nFrames - (noise1Frames + noise2Frames + signal1Frames);
 trialDuration = nFrames*vizPresentationRate;
 
 %% create arrays to hold values
-choices = zeros(nTrial, 2);
+choices = zeros(nTrial, 2); %raw choice; forced choice (state of accumulator)
 RTs = zeros(nTrial, 1);
+startPoints = zeros(nTrial, 2); %DV start point in first and second noise periods
 memoryAccumulator = zeros(nFrames, nTrial);
 visionAccumulator = zeros(nFrames, nTrial);
 decisionVariable = zeros(nFrames, nTrial);
@@ -102,14 +104,14 @@ end
 % create memory evidence stream
 memoryStream = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
 % define analytic solution for memory
-expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
+% expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
 
 % define viz evidence changepoints 
 signal1Onsets = noise1Frames + 1;
 noise2Onsets = noise1Frames + signal1Frames + 1;
 signal2Onsets = noise1Frames + signal1Frames + noise2Frames + 1;
 % initialize analytic solution matrix for vision
-expectedVizValue = zeros(nFrames, nTrial);
+% expectedVizValue = zeros(nFrames, nTrial);
 
 % create visual evidence stream
 if noisePeriods==0
@@ -159,11 +161,11 @@ else
         end
 
         % compute analytic solution for each trial
-        sig1EV = (repelem([1:ceil(signal1Frames(trial)/2)]', 2)*coherence);
-        sig2EV = (repelem([1:ceil(signal2Frames(trial)/2)]', 2)*coherence) + sig1EV(signal1Frames(trial));
-        expectedVizValue(noise1Frames(trial)+1:noise2Onsets(trial)-1, trial) = sig1EV(1:signal1Frames(trial));
-        expectedVizValue(noise2Onsets(trial):signal2Onsets(trial)-1, trial) = sig1EV(signal1Frames(trial));
-        expectedVizValue(signal2Onsets(trial):nFrames, trial) = sig2EV(1:signal2Frames(trial));
+        %sig1EV = (repelem([1:ceil(signal1Frames(trial)/2)]', 2)*coherence);
+        %sig2EV = (repelem([1:ceil(signal2Frames(trial)/2)]', 2)*coherence) + sig1EV(signal1Frames(trial));
+        %expectedVizValue(noise1Frames(trial)+1:noise2Onsets(trial)-1, trial) = sig1EV(1:signal1Frames(trial));
+        %expectedVizValue(noise2Onsets(trial):signal2Onsets(trial)-1, trial) = sig1EV(signal1Frames(trial));
+        %expectedVizValue(signal2Onsets(trial):nFrames, trial) = sig2EV(1:signal2Frames(trial));
     end
 end
 
@@ -292,6 +294,10 @@ for trial=1:nTrial
             choices(trial, 2) = 0;
         end
     end
+
+    % populate startPoints matrix
+    startPoints(trial, 1) = decisionVariable(noise1Frames(trial), trial);
+    startPoints(trial, 2) = decisionVariable(signal2Onsets(trial)-1, trial);
 end
 toc
 
@@ -316,18 +322,20 @@ data.minSignalDuration = minSignalDuration;
 data.noise1Frames = noise1Frames;
 data.noise2Frames = noise2Frames;
 data.noise2Onset = noise2Onsets;
+data.signal2Onsets = signal2Onsets;
 data.signal1Frames = signal1Frames;
+data.signal2Frames = signal2Frames;
 data.secondSignalMin = secondSignalMin;
 data.flickerAdditiveNoise = flickerAdditiveNoise;
 data.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
 data.flickerNoisePadding = flickerNoisePadding;
 data.flickerPaddingValue = flickerPaddingValue;
 data.counters = counters;
+data.startPoints = startPoints;
 
 % behavior
 data.choices = choices;
 data.RT = RTs;
-%data.expectedAccuracy = expectedAccuracy;
 
 % optional frame-by-frame info
 if saveEvidence==1
@@ -342,6 +350,10 @@ end
 if saveAccumulators==1
     data.memoryAccumulator = memoryAccumulator;
     data.visionAccumulator = visionAccumulator;
+end
+
+if saveDV==1
+    data.decisionVariable = decisionVariable;
 end
 
 if saveCounters==1

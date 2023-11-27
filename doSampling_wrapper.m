@@ -1,24 +1,26 @@
 %% specify simulation settings
 clear
-nSub = 1;
-nTrial = 10; % per cue
-cue = [0.7];
-coherence = [0.5];
-threshold = [9];
-memoryThinning = [4];
+nSub = 5;
+nTrial = 100; % per cue
+cue = [0.8];
+coherence = [0.51];
+threshold = [15];
+memoryThinning = [12];
 visionThinning = 1;
 vizPresentationRate = 1/60;
-noisePeriods = 0; % logical: do you want 2 noise periods?
 
-% durations in seconds
-expLambda = 0.15;
-maxNoiseDuration = 0.001;
-minNoiseDuration = 0;
-minSignalDuration = 0.375;
+% noise periods
+noisePeriods = 1; % logical: do you want 2 noise periods?
+noNoiseTrialDuration = 3; % in seconds: how long do you want trials to be if there are no noise periods?
+% parameters of the noise periods
+expLambda = 0.15; % parameter of the exponential defining the hazard rates 
+maxNoiseDuration = 2; % seconds
+minNoiseDuration = 1; % seconds
+minSignalDuration = 0.75; % seconds
 secondSignalMin = 1; % value to be added to signalMin to create a second signal period of additional length
 
 % half neutral trials (boolean)
-halfNeutralTrials = 1;
+halfNeutralTrials = 0;
 
 % visual evidence noise
 flickerAdditiveNoise = 1;  % logical; do you want to add noise to each sample of visual evidence?
@@ -30,6 +32,7 @@ flickerPaddingValue = 'zero'; % string; how do you want to model noise frames? o
 saveEvidence = 1;
 saveFlickerNoise = 1;
 saveAccumulators = 1;
+saveDV = 1;
 saveCounters = 1;
 savePrecisions = 1;
 saveDrifts = 1;
@@ -61,6 +64,7 @@ for a = 1:length(coherence)
                 config.visionThinning = visionThinning;
                 config.vizPresentationRate = vizPresentationRate;
                 config.noisePeriods = noisePeriods;
+                config.noNoiseTrialDuration = noNoiseTrialDuration;
                 
                 config.maxNoiseDuration = maxNoiseDuration;
                 config.minNoiseDuration = minNoiseDuration;
@@ -76,6 +80,7 @@ for a = 1:length(coherence)
                 config.saveEvidence = saveEvidence;
                 config.saveFlickerNoise = saveFlickerNoise;
                 config.saveAccumulators = saveAccumulators;
+                config.saveDV = saveDV;
                 config.saveCounters = saveCounters;
                 config.savePrecisions = savePrecisions;
                 config.saveDrifts = saveDrifts;
