@@ -59,9 +59,12 @@ for i = 1:length(noiseDistribution)
     end
 end
 
-noise1Frames = Shuffle(noiseFrames + noiseMin);
-noise2Frames = Shuffle(noise1Frames);
-signal1Frames = Shuffle(noiseFrames + signalMin);
+noise1Frames = noiseFrames + noiseMin;
+noise1Frames = noise1Frames(randperm(length(noise1Frames)));
+noise2Frames = noise1Frames(randperm(length(noise1Frames)));
+signal1Frames = noiseFrames + signalMin;
+signal1Frames = signal1Frames(randperm(length(signal1Frames)));
+
 if noisePeriods==0
     nFrames = noNoiseTrialDuration / vizPresentationRate;
 else
@@ -141,7 +144,7 @@ else
     % populate according to coherence & noise frames
     for trial=1:nTrial
         flickerStream(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial), trial);
-        flickerStream(noise2Onsets(trial):signal1Onsets(trial)-1, trial) = flickerNoise(noise2Onsets(trial):signal1Onsets(trial)-1, trial);
+        flickerStream(noise2Onsets(trial):signal2Onsets(trial)-1, trial) = flickerNoise(noise2Onsets(trial):signal2Onsets(trial)-1, trial);
         imgIdx = find(flickerStream(:, trial)==1);
         nImgFrames = length(imgIdx);
         nTargetFrames = ceil(nImgFrames*coherence);
