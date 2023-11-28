@@ -1,11 +1,12 @@
 % plot precisions, drift rates, accumulators for single trials
 
 trial = 1;
-
+% unwrap structure if loading in data
+% struct2vars(data);
 % make dummy mem evidence variable for unweighted accumulator plot
 memEvidence = zeros(nFrames, 1);
 memEvidence(mod(1:nFrames, memoryThinning)==1) = ...
-    memoryStream(mod(1:nFrames, memoryThinning)==1, trial);
+    memoryEvidence(mod(1:nFrames, memoryThinning)==1, trial);
 
 % set up figure
 time = 1:nFrames;
@@ -25,9 +26,9 @@ title('estimated precision');
 % drift rates
 nexttile;
 hold on
-plot(time, memoryDrift(:, trial));
-plot(time, visionDrift(:, trial));
-plot(time, visionDrift(:,trial) + memoryDrift(:,trial));
+plot(time, memoryDrifts(:, trial));
+plot(time, visionDrifts(:, trial));
+plot(time, visionDrifts(:,trial) + memoryDrifts(:,trial));
 xregion(0, noise1Frames(trial), FaceAlpha=alpha);
 xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
 legend({'memory drift', 'vision drift', 'DV drift (mem+viz)'});
@@ -48,7 +49,7 @@ title('reliability-weighted accumulators')
 nexttile;
 hold on
 plot(time, cumsum(memEvidence));
-plot(time, cumsum(flickerStream(:, trial)));
+plot(time, cumsum(visionEvidence(:, trial)));
 plot(time, decisionVariable(:, trial));
 xregion(0, noise1Frames(trial), FaceAlpha=alpha);
 xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);

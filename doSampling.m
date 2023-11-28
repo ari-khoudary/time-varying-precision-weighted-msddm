@@ -19,7 +19,7 @@ secondSignalMin = config.secondSignalMin;
 halfNeutralTrials = config.halfNeutralTrials;
 flickerAdditiveNoise = config.flickerAdditiveNoise;
 flickerAdditiveNoiseValue = config.flickerAdditiveNoiseValue;
-flickerNoisePadding = config.flickerNoisePadding;
+flickerPadding = config.flickerNoisePadding;
 flickerPaddingValue = config.flickerPaddingValue;
 
 % do you want to save any frame-by-frame information?
@@ -105,7 +105,7 @@ for i = 1:length(p)
 end
 
 % create memory evidence stream
-memoryStream = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
+memoryEvidence = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
 % define analytic solution for memory
 % expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
 
@@ -118,8 +118,8 @@ signal2Onsets = noise1Frames + signal1Frames + noise2Frames + 1;
 
 % create visual evidence stream
 if noisePeriods==0
-    flickerStream = (binornd(1,coherence, [nFrames,nTrial])*2-1) + normrnd(0,1,[nFrames,nTrial]);
-    flickerStream(:, congruentTrials+1:nTrial) = -1*flickerStream(:, congruentTrials+1:nTrial);
+    visionEvidence = (binornd(1,coherence, [nFrames,nTrial])*2-1) + normrnd(0,1,[nFrames,nTrial]);
+    visionEvidence(:, congruentTrials+1:nTrial) = -1*visionEvidence(:, congruentTrials+1:nTrial);
 else
     % make noise matrices
     if strcmp(flickerPaddingValue,'zero')==1
@@ -133,19 +133,19 @@ else
     end
 
     % initialize stream
-    if flickerNoisePadding==0
-        flickerStream = ones(nFrames/2, nTrial);
+    if flickerPadding==0
+        visionEvidence = ones(nFrames/2, nTrial);
     else
-        flickerStream = repmat([1; NaN], nFrames/2, nTrial);
-        noiseBool = isnan(flickerStream);
-        flickerStream(noiseBool) = flickerNoise(noiseBool);
+        visionEvidence = repmat([1; NaN], nFrames/2, nTrial);
+        noiseBool = isnan(visionEvidence);
+        visionEvidence(noiseBool) = flickerNoise(noiseBool);
     end
 
     % populate according to coherence & noise frames
     for trial=1:nTrial
-        flickerStream(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial), trial);
-        flickerStream(noise2Onsets(trial):signal2Onsets(trial)-1, trial) = flickerNoise(noise2Onsets(trial):signal2Onsets(trial)-1, trial);
-        imgIdx = find(flickerStream(:, trial)==1);
+        visionEvidence(1:noise1Frames(trial), trial)= flickerNoise(1:noise1Frames(trial), trial);
+        visionEvidence(noise2Onsets(trial):signal2Onsets(trial)-1, trial) = flickerNoise(noise2Onsets(trial):signal2Onsets(trial)-1, trial);
+        imgIdx = find(visionEvidence(:, trial)==1);
         nImgFrames = length(imgIdx);
         nTargetFrames = ceil(nImgFrames*coherence);
         targetIdx = randsample(imgIdx, nTargetFrames);
@@ -156,11 +156,11 @@ else
             target=-1;
         end
         if flickerAdditiveNoise==0
-            flickerStream(targetIdx, trial) = target;
-            flickerStream(lureIdx, trial) = -target;
+            visionEvidence(targetIdx, trial) = target;
+            visionEvidence(lureIdx, trial) = -target;
         else
-            flickerStream(targetIdx, trial) = target + flickerSampleNoise(targetIdx, trial);
-            flickerStream(lureIdx, trial) = -target + flickerSampleNoise(lureIdx, trial);
+            visionEvidence(targetIdx, trial) = target + flickerSampleNoise(targetIdx, trial);
+            visionEvidence(lureIdx, trial) = -target + flickerSampleNoise(lureIdx, trial);
         end
 
         % compute analytic solution for each trial
@@ -187,9 +187,9 @@ for trial=1:nTrial
 
         if mod(frame, visionThinning)==0
             % update visual counters
-            if flickerStream(frame, trial) > 0
+            if visionEvidence(frame, trial) > 0
                 alphaVis = alphaVis + 1;
-            elseif flickerStream(frame, trial) < 0
+            elseif visionEvidence(frame, trial) < 0
                 betaVis = betaVis + 1;
             end
 
@@ -205,7 +205,7 @@ for trial=1:nTrial
 
         if mod(frame, memoryThinning)==1 % this allows a memory sample on the first frame
             % update memory counters
-            if memoryStream(frame, trial) > 0
+            if memoryEvidence(frame, trial) > 0
                 alphaMem = alphaMem + 1;
             else
                 betaMem = betaMem + 1;
@@ -230,8 +230,8 @@ for trial=1:nTrial
         memoryDrift(frame, trial) = memoryDriftRate;
 
         % compute time-varying relative precision-weighted decision variable
-        memorySample = memoryStream(frame, trial);
-        visualSample = flickerStream(frame, trial);
+        memorySample = memoryEvidence(frame, trial);
+        visualSample = visionEvidence(frame, trial);
 
         if frame == 1
             visionAccumulator(frame, trial) = visualSample * visionDriftRate;
@@ -324,14 +324,15 @@ data.minNoiseDuration = minNoiseDuration;
 data.minSignalDuration = minSignalDuration;
 data.noise1Frames = noise1Frames;
 data.noise2Frames = noise2Frames;
-data.noise2Onset = noise2Onsets;
+data.signal1Onsets = signal1Onsets;
+data.noise2Onsets = noise2Onsets;
 data.signal2Onsets = signal2Onsets;
 data.signal1Frames = signal1Frames;
 data.signal2Frames = signal2Frames;
 data.secondSignalMin = secondSignalMin;
 data.flickerAdditiveNoise = flickerAdditiveNoise;
 data.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
-data.flickerNoisePadding = flickerNoisePadding;
+data.flickerNoisePadding = flickerPadding;
 data.flickerPaddingValue = flickerPaddingValue;
 data.counters = counters;
 data.startPoints = startPoints;
@@ -342,8 +343,8 @@ data.RT = RTs;
 
 % optional frame-by-frame info
 if saveEvidence==1
-    data.memoryEvidence = memoryStream;
-    data.visionEvidence = flickerStream;
+    data.memoryEvidence = memoryEvidence;
+    data.visionEvidence = visionEvidence;
 end
 
 if saveFlickerNoise==1

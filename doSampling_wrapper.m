@@ -1,7 +1,7 @@
 %% specify simulation settings
 clear
-nSub = 5;
-nTrial = 100; % per cue
+nSub = 1;
+nTrial = 10; % per cue
 cue = [0.8];
 coherence = [0.51];
 threshold = [15];
@@ -25,7 +25,7 @@ halfNeutralTrials = 0;
 % visual evidence noise
 flickerAdditiveNoise = 1;  % logical; do you want to add noise to each sample of visual evidence?
 flickerAdditiveNoiseValue = 'gaussian';  % string; what kind of noise do you want to add to each visual evidence sample? gaussian=zero-centered gaussian
-flickerNoisePadding = 1;  % logical; do you want to pad each signal frame with a noise frame?
+flickerPadding = 1;  % logical; do you want to pad each signal frame with a noise frame?
 flickerPaddingValue = 'zero'; % string; how do you want to model noise frames? options are zeros, zero-centered gaussian, more to come
 
 % do you want to save frame-by-frame information for each trial?
@@ -38,7 +38,7 @@ savePrecisions = 1;
 saveDrifts = 1;
 
 % where do you want to save the results? (subdirectory of current dir)
-outDir = 'v3/test';
+outDir = 'v3/';
 
 %% create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
@@ -75,7 +75,7 @@ for a = 1:length(coherence)
                 config.halfNeutralTrials = halfNeutralTrials;
                 config.flickerAdditiveNoise = flickerAdditiveNoise;
                 config.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
-                config.flickerNoisePadding = flickerNoisePadding;
+                config.flickerNoisePadding = flickerPadding;
                 config.flickerPaddingValue = flickerPaddingValue;
                 config.saveEvidence = saveEvidence;
                 config.saveFlickerNoise = saveFlickerNoise;
@@ -113,7 +113,7 @@ end
 toc
 
 %% plot results
-
+plotTrialParams;
 doSampling_summaryPlots;
 
 
