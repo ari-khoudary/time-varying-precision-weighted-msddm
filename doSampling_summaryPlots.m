@@ -10,9 +10,10 @@ for i=2:length(files)
     allData(i) = load([outDir filesep files(i).name]).data;
 end
 
-%% make long structure (each trial is one row)
-longData = repmat(struct('subID', [], 'nTrial', [], 'cue', [], 'coherence', [], 'congruent', [], 'threshold', [], 'memoryThinning', [], 'nFrames', [], ...
-    'noise1Frames', [], 'noise2Frames', [], 'noise2Onset', [], 'signal1Frames', [], 'rawChoice', [], 'forcedChoice', [], 'RT', []), sum([allData.nTrial]), 1);
+%% make long structure (each trial is one row) -- this should be a function
+longData = repmat(struct('cue', [], 'coherence', [], 'congruent', [], 'threshold', [], 'memoryThinning', [], ...
+    'noise1Frames', [], 'signal1Onsets', [], 'signal1Frames', [], 'noise2Onsets', [], 'noise2Frames', [], 'signal2Onsets', [], 'signal2Frames', [], ...
+    'rawChoice', [], 'forcedChoice', [], 'RT', [], 'startPoint1', [], 'startPoint2', [], 'subID', [], 'nTrial', [], 'nFrames', []), sum([allData.nTrial]), 1);
 trialCounter = [0 cumsum([allData.nTrial])];
 
 for i=1:length(allData)
@@ -43,14 +44,23 @@ for i=1:length(allData)
     noise1 = num2cell(allData(i).noise1Frames);
     [longData(trialCounter(i)+1:trialCounter(i+1)).noise1Frames] = noise1{:};
 
-    noise2 = num2cell(allData(i).noise2Frames);
-    [longData(trialCounter(i)+1:trialCounter(i+1)).noise2Frames] = noise2{:};
-
-    noise2o = num2cell(allData(i).noise2Onset);
-    [longData(trialCounter(i)+1:trialCounter(i+1)).noise2Onset] = noise2o{:};
+    sig1o = num2cell(allData(i).signal1Onsets);
+    [longData(trialCounter(i)+1:trialCounter(i+1)).signal1Onsets] = sig1o{:};
 
     sig1 = num2cell(allData(i).signal1Frames);
     [longData(trialCounter(i)+1:trialCounter(i+1)).signal1Frames] = sig1{:};
+
+    noise2o = num2cell(allData(i).noise2Onsets);
+    [longData(trialCounter(i)+1:trialCounter(i+1)).noise2Onsets] = noise2o{:};
+
+    noise2 = num2cell(allData(i).noise2Frames);
+    [longData(trialCounter(i)+1:trialCounter(i+1)).noise2Frames] = noise2{:};
+
+    sig2o = num2cell(allData(i).signal2Onsets);
+    [longData(trialCounter(i)+1:trialCounter(i+1)).signal2Onsets] = sig2o{:};
+
+    sig2 = num2cell(allData(i).signal2Frames);
+    [longData(trialCounter(i)+1:trialCounter(i+1)).signal2Frames] = sig2{:};
 
     rawC = num2cell(allData(i).choices(:,1));
     [longData(trialCounter(i)+1:trialCounter(i+1)).rawChoice] = rawC{:};
@@ -61,9 +71,15 @@ for i=1:length(allData)
     rt = num2cell(allData(i).RT);
     [longData(trialCounter(i)+1:trialCounter(i+1)).RT] = rt{:};
 
+    sp1 = num2cell(allData(i).startPoints(:,1));
+    [longData(trialCounter(i)+1:trialCounter(i+1)).startPoint1] = sp1{:};
+
+    sp2 = num2cell(allData(i).startPoints(:,2));
+    [longData(trialCounter(i)+1:trialCounter(i+1)).startPoint2] = sp2{:};
+
 end
 
-clear sid trials cues cohs threshs thins frames cong noise1 noise2 noise2o sig1 rawC forcedC rt
+clear sid trials cues cohs threshs thins frames cong noise1 sig1o sig1 noise2o noise2 sig2o sig2 rawC forcedC rt sp1 sp2
 
 % and convert to table 
 dataTable = struct2table(longData);
@@ -71,6 +87,7 @@ dataTable = struct2table(longData);
 %% configure table for plotting
 dataTable.congruent = categorical(dataTable.congruent, [1, 0], {'congruent', 'incongruent'});
 dataTable.congruent(dataTable.cue==0.5) = 'neutral';
+maxThresh = max(unique(dataTable.threshold));
 
 %% make summary tables
 % compute sem based on number of simulated subjects
@@ -97,10 +114,10 @@ summaryTable.nanRT = groupsummary(dataTable, ["congruent", "cue", "coherence", "
 f(1,1) = gramm('x', summaryTable.coherence, 'y', summaryTable.mean_rawChoice, ...
     'color', summaryTable.cue, 'linestyle', summaryTable.congruent,...
             'ymin', summaryTable.lowerCI_rawChoice, 'ymax', summaryTable.upperCI_rawChoice);
-f(1,1).set_names('x', 'coherence', 'y', 'proportion correct (+/- sem)', ...
-    'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold');
-f(1,1).set_title(['raw choice, n=' num2str(nSub)]);
-f(1,1).facet_grid([], num2cell(num2str(summaryTable.threshold), 2));
+f(1,1).set_names('x', 'coherence', 'y', 'propCorrect', ...
+    'color', 'cue', 'linestyle', 'congruent', 'column', 'threshold', 'row', 'thinning');
+f(1,1).set_title('raw choice (+/- sem)');
+f(1,1).facet_grid(num2cell(num2str(summaryTable.memoryThinning), 2), num2cell(num2str(summaryTable.threshold), 2));
 f(1,1).geom_abline('slope', 0, 'intercept', 0.5, 'style', ':');
 f(1,1).geom_point();
 f(1,1).geom_interval('geom', 'errorbar');
@@ -110,10 +127,10 @@ f(1,1).geom_line();
 f(1,2) = gramm('x', summaryTable.coherence, 'y', summaryTable.mean_forcedChoice, ...
     'color', summaryTable.cue, 'linestyle', summaryTable.congruent,...
             'ymin', summaryTable.lowerCI_forcedChoice, 'ymax', summaryTable.upperCI_forcedChoice);
-f(1,2).set_names('x', 'coherence', 'y', 'proportion correct (+/- sem)', ...
-    'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold');
-f(1,2).set_title(['forced choice (sign of accumulator), n=' num2str(nSub)]);
-f(1,2).facet_grid([], num2cell(num2str(summaryTable.threshold), 2));
+f(1,2).set_names('x', 'coherence', 'y', 'propCorrect', ...
+    'color', 'cue', 'linestyle', 'congruent', 'column', 'threshold', 'row', 'thinning');
+f(1,2).set_title('forced choice (sign of accumulator) +/- sem');
+f(1,2).facet_grid(num2cell(num2str(summaryTable.memoryThinning), 2), num2cell(num2str(summaryTable.threshold), 2));
 f(1,2).geom_abline('slope', 0, 'intercept', 0.5, 'style', ':');
 f(1,2).geom_point();
 f(1,2).geom_interval('geom', 'errorbar');
@@ -123,9 +140,9 @@ f(1,2).geom_line();
 % proportion not hitting threshold
 f(2,1) = gramm('x', summaryTable.coherence, 'y', summaryTable.nanRT,...
     'color', summaryTable.cue, 'linestyle', summaryTable.congruent);
-f(2,1).set_names('x', 'coherence', 'y', 'count', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threshold');
+f(2,1).set_names('x', 'coherence', 'y', 'count', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threshold', 'row', 'thinning');
 f(2,1).set_title('number of trials with NaN choice');
-f(2,1).facet_wrap(num2cell(num2str(summaryTable.threshold), 2));
+f(2,1).facet_grid(num2cell(num2str(summaryTable.memoryThinning), 2), num2cell(num2str(summaryTable.threshold), 2));
 f(2,1).geom_point();
 f(2,1).geom_line();
 
@@ -134,9 +151,9 @@ f(2,2) = gramm('x', summaryTable.coherence, 'y', summaryTable.mean_RT, ...
     'color', summaryTable.cue, 'linestyle', summaryTable.congruent,...
             'ymin', summaryTable.lowerCI_RT, 'ymax', summaryTable.upperCI_RT);
 f(2,2).set_names('x', 'coherence', 'y', 'mean RT', ...
-    'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold');
-f(2,2).set_title(['mean +/- sem RT, n=' num2str(nSub)]);
-f(2,2).facet_wrap(num2cell(num2str(summaryTable.threshold), 2));
+    'color', 'cue', 'linestyle', 'congruent', 'column', 'threshold', 'row', 'thinning');
+f(2,2).set_title('RT +/- sem; all trials');
+f(2,2).facet_grid(num2cell(num2str(summaryTable.memoryThinning), 2), num2cell(num2str(summaryTable.threshold), 2));
 f(2,2).geom_abline('slope', 0, 'intercept', 0.5, 'style', ':');
 f(2,2).geom_abline('slope', 0, 'intercept', max(dataTable.nFrames), 'style', '-');
 f(2,2).geom_point();
@@ -144,27 +161,62 @@ f(2,2).geom_interval('geom', 'errorbar');
 f(2,2).geom_line();
 
 figure('Name', 'Effects of threshold on accuracy & RT');
+sgtitle(['n=' num2str(nSub) '; 100 trials/cell/subj']);
 f.draw();
 
 
 %% plot effects of threshold on RT distributions
 
 clear f
-f(1,1) = gramm('x', dataTable.RT, 'color', dataTable.cue, 'linestyle', dataTable.congruent);
-f(1,1).set_names('x', 'RT', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold', 'row', 'coherence');
-f(1,1).set_title(['all trials (N=' num2str(height(dataTable)) ')']);
+% all trials, thin = 4
+f(1,1) = gramm('x', dataTable.RT, 'color', dataTable.cue, 'linestyle', dataTable.congruent, 'subset', dataTable.memoryThinning==4);
+f(1,1).set_names('x', 'RT', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threshold', 'row', 'coh');
+f(1,1).set_title('all trials (RT=450 if threshold not hit), thinning= 4');
 f(1,1).facet_grid(num2cell(num2str(dataTable.coherence), 2), num2cell(num2str(dataTable.threshold), 2));
-f(1,1).stat_bin('nbins', 8, 'geom', 'line');
+f(1,1).stat_bin('nbins', 30, 'geom', 'line');
+f(1,1).set_line_options('style', {'-', '-.', '-'})
 
-f(1,2) = gramm('x', dataTable.RT, 'color', dataTable.cue, 'linestyle', dataTable.congruent, 'subset', ~isnan(dataTable.rawChoice));
-f(1,2).set_names('x', 'RT', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold', 'row', 'coherence');
-f(1,2).set_title(['only trials when DV hit threshold (N=' num2str(height(dataTable.RT(~isnan(dataTable.rawChoice)))) ')']);
+% all trials, thin = 12
+f(1,2) = gramm('x', dataTable.RT, 'color', dataTable.cue, 'linestyle', dataTable.congruent, 'subset', dataTable.memoryThinning==12);
+f(1,2).set_names('x', 'RT', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threshold', 'row', 'coh');
+f(1,2).set_title('all trials (RT=450 if threshold not hit), thinning= 12');
 f(1,2).facet_grid(num2cell(num2str(dataTable.coherence), 2), num2cell(num2str(dataTable.threshold), 2));
-f(1,2).stat_bin('nbins', 20, 'geom', 'overlaid_bar', 'fill', 'transparent');
+f(1,2).stat_bin('nbins', 30, 'geom', 'line');
+f(1,2).set_line_options('style', {'-', '-.', '-'})
+
+% actual choice only, thin = 4
+f(2,1) = gramm('x', dataTable.RT, 'color', dataTable.cue, 'linestyle', dataTable.congruent, 'subset', ~isnan(dataTable.rawChoice) & dataTable.memoryThinning==4);
+f(2,1).set_names('x', 'RT', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold', 'row', 'coh');
+f(2,1).set_title('only trials when DV hit threshold, thinning = 4');
+f(2,1).facet_grid(num2cell(num2str(dataTable.coherence), 2), num2cell(num2str(dataTable.threshold), 2));
+f(2,1).stat_bin('nbins', 30, 'geom', 'line');
+f(2,1).set_line_options('style', {'-', '-.', '-'})
+
+% actual choice only, thin = 12
+f(2,2) = gramm('x', dataTable.RT, 'color', dataTable.cue, 'linestyle', dataTable.congruent, 'subset', ~isnan(dataTable.rawChoice) & dataTable.memoryThinning==12);
+f(2,2).set_names('x', 'RT', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'threhsold', 'row', 'coh');
+f(2,2).set_title('only trials when DV hit threshold, thinning = 12');
+f(2,2).facet_grid(num2cell(num2str(dataTable.coherence), 2), num2cell(num2str(dataTable.threshold), 2));
+f(2,2).stat_bin('nbins', 30, 'geom', 'line');
+f(2,2).set_line_options('style', {'-', '-.', '-'})
 
 figure('Name', 'Effect of threshold on RT distributions');
 f.draw();
 
+
+%% plot effects of thinning on DV starting point distributions
+
+clear f
+f(1,1) = gramm('x', dataTable.startPoint1, 'color', dataTable.cue, 'linestyle', dataTable.congruent);
+f(1,1).set_names('x', 'DV start point at viz evidence onset', 'y', 'density', 'color', 'cue', 'linestyle', 'congruent', 'column', 'thin', 'row', 'coh');
+f(1,1).set_title('Starting point distributions (value of DV at end of first noise period)');
+f(1,1).facet_grid(num2cell(num2str(dataTable.coherence), 2), num2cell(num2str(dataTable.memoryThinning), 2));
+f(1,1).stat_bin('nbins', 30, 'geom', 'line');
+f(1,1).set_line_options('style', {'-', '-.', '-'})
+
+
+figure('Name', 'Effect of conditions on DV start point distributions');
+f.draw();
 
 
 %% plot summary effects of threshold & coherence (matlab base plotting)
