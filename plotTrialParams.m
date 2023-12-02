@@ -1,8 +1,17 @@
 % plot precisions, drift rates, accumulators for single trials
 
-trial = 1;
-% unwrap structure if loading in data
-% struct2vars(data);
+%% unwrap structure if loading in data
+struct2vars(data);
+
+if threshold < 2*max(max(decisionVariable))
+    plotThresh = 1;
+else
+    plotThresh=0;
+end
+
+%%  
+trial = 2;
+
 % make dummy mem evidence variable for unweighted accumulator plot
 memEvidence = zeros(nFrames, 1);
 memEvidence(mod(1:nFrames, memoryThinning)==1) = ...
@@ -20,7 +29,7 @@ plot(time, memoryPrecisions(:,trial));
 plot(time, visionPrecisions(:,trial));
 xregion(0, noise1Frames(trial), FaceAlpha=alpha);
 xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
-legend({'memory precision', 'vision precision'});
+legend({'memory precision', 'vision precision', 'noise periods'});
 title('estimated precision');
 
 % drift rates
@@ -42,7 +51,12 @@ plot(time, visionAccumulator(:, trial));
 plot(time, decisionVariable(:, trial));
 xregion(0, noise1Frames(trial), FaceAlpha=alpha);
 xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
-legend({'memory accumulator', 'vision accumulator', 'DV'});
+if plotThresh
+    yline(threshold);
+    legend({'memory accumulator', 'vision accumulator', 'DV', '', '', 'threshold'}, 'Location', 'northwest');
+else
+    legend({'memory accumulator', 'vision accumulator', 'DV'}, 'Location', 'northwest');
+end
 title('reliability-weighted accumulators')
 
 % cumsum
@@ -53,8 +67,13 @@ plot(time, cumsum(visionEvidence(:, trial)));
 plot(time, decisionVariable(:, trial));
 xregion(0, noise1Frames(trial), FaceAlpha=alpha);
 xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
-legend({'memory', 'vision', 'DV (reliability-weighted)'});
-title('unweighted cumulative sum')
+if plotThresh
+    yline(threshold);
+    legend({'memory', 'vision', 'DV (from model)', '', '', 'threshold'}, 'Location', 'northwest');
+else
+    legend({'memory', 'vision', 'DV (from model)'}, 'Location', 'northwest');
+end
+title('unweighted cumulative sum of samples')
 
-title(t, ['example trial (#' num2str(trial) '): ' num2str(cue) ' cue, ' num2str(coherence) ' coh, 1:' num2str(memoryThinning) ' mem:viz'])
-subtitle(t, ['gray bars = noise periods; flickerAdditiveNoise = ' num2str(flickerAdditiveNoise)]);
+sgtitle(t, ['example trial (#' num2str(trial) '): ' num2str(cue) ' cue, ' num2str(coherence) ' coh, 1:' num2str(memoryThinning) ' mem:viz, threshold=' num2str(threshold)])
+subtitle(t, ['congruent=', num2str(congruent(trial)) ', flickerAdditiveNoise=' num2str(flickerAdditiveNoise)]);
