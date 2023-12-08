@@ -1,8 +1,9 @@
 %% load in .mat files
-if ~exist(outDir, 'var')
-    outDir = 'v3/bigSim_11.27';
+if ~exist('outDir', 'var')
+    dataDir = 'v3/bigSim_11.27';
+else
+    dataDir = outDir;
 end
-dataDir = outDir;
 files = (dir([pwd filesep dataDir filesep '*.mat']));
 allData = load([outDir filesep files(1).name]).data;
 allData = repmat(allData, length(files), 1);
@@ -96,10 +97,16 @@ for i=1:length(allData)
 
 end
 
-clear sid trials cues cohs threshs thins frames cong noise1 sig1o sig1 noise2o noise2 sig2o sig2 rawC forcedC rt sp1 sp2 dv1 dv2 dv3 dv4
+clear sid trials cues cohs threshs thins frames cong noise1 sig1o sig1 noise2o noise2 sig2o sig2 rawC forcedC rt sp1 sp2 dv1 dv2 dv3 dv4 trialCounter
 
 % and convert to table 
 dataTable = struct2table(longData);
+
+%% compute relative RT
+dataTable.noise1RT = dataTable.RT < dataTable.signal1Onsets;
+dataTable.signal1RT = (dataTable.RT >= dataTable.signal1Onsets & dataTable.RT < dataTable.noise2Onsets);
+dataTable.noise2RT = (dataTable.RT >= dataTable.noise2Onsets & dataTable.RT < dataTable.signal2Onsets);
+dataTable.signal2RT = dataTable.RT >= dataTable.signal2Onsets;
 
 %% configure table for plotting
 dataTable.congruent = categorical(dataTable.congruent, [1, 0], {'congruent', 'incongruent'});
@@ -120,10 +127,12 @@ stimuliSummary = groupsummary(dataTable, ...
 % summary stats for behavior
 % NOTE: RT median in this table is not a good summary; its biased by the
 % high threshold trials when DV doesn't hit threshold (and thus RT=nFrames)
+% subsequent plots of median RT by condition compute the statistic directly
+% in the plotting call (stat_summary)
 summaryTable = groupsummary(dataTable, ...
     ["congruent", "cue", "coherence", "threshold", "memoryThinning"], ...
     {'mean', f_sem, 'median', 'mode'}, ...
-    {'rawChoice', 'forcedChoice', 'RT', 'startPoint1', 'startPoint2', 'dvSlope1', 'dvSlope2', 'dvSlope3', 'dvSlope4'});
+    {'rawChoice', 'forcedChoice', 'RT', 'startPoint1', 'startPoint2', 'dvSlope1', 'dvSlope2', 'dvSlope3', 'dvSlope4', 'noise1RT', 'signal1RT', 'noise2RT', 'signal2RT'});
 
 % add sem intervals to summary table
 summaryTable.upperCI_rawChoice = summaryTable.mean_rawChoice + summaryTable.fun1_rawChoice;
@@ -162,7 +171,7 @@ dataNames = {'dummySlope1', 'dummySlope2', 'dummySlope3', 'dummySlope4'};
 summaryNames = {'dummyMean_dvSlope1', 'dummyMean_dvSlope2', 'dummyMean_dvSlope3', 'dummyMean_dvSlope4'};
 funNames = {'dummyFun1_dvSlope1', 'dummyFun1_dvSlope2', 'dummyFun1_dvSlope3', 'dummyFun1_dvSlope4'};
 
-for i = 1:length(varNames)
+for i = 1:length(dataNames)
     dataTable{dataTable.congruent=='incongruent', dataNames{i}} = -1*dataTable{dataTable.congruent=='incongruent', dataNames{i}};
     summaryTable{summaryTable.congruent=='incongruent', summaryNames{i}} = -1*summaryTable{summaryTable.congruent=='incongruent', summaryNames{i}};
     summaryTable{summaryTable.congruent=='incongruent', funNames{i}} = -1*summaryTable{summaryTable.congruent=='incongruent', summaryNames{i}};
