@@ -25,4 +25,5 @@ for i = 1:height(allData)
 
 end
 
+clear noise1 noise2 signal1 signal2 dv
 
