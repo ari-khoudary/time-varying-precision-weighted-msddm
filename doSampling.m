@@ -16,6 +16,7 @@ maxNoiseDuration = config.maxNoiseDuration;
 minNoiseDuration = config.minNoiseDuration;
 minSignalDuration = config.minSignalDuration;
 secondSignalMin = config.secondSignalMin;
+noNoiseTrialDuration = config.noNoiseTrialDuration;
 halfNeutralTrials = config.halfNeutralTrials;
 flickerAdditiveNoise = config.flickerAdditiveNoise;
 flickerAdditiveNoiseValue = config.flickerAdditiveNoiseValue;
@@ -42,28 +43,30 @@ congruentTrials = ceil(nTrial*cue);
 congruent = [ones(congruentTrials, 1); zeros(nTrial-congruentTrials,1)];
 
 % make noise durations
-noiseFrames = zeros(nTrial, 1);
-maxNoiseFrames = maxNoiseDuration/vizPresentationRate;
-noiseMin = round(minNoiseDuration/vizPresentationRate); %in frames
-signalMin = round(minSignalDuration/vizPresentationRate); %in frames
-noisePDF = discrete_bounded_hazard_rate(expLambda, maxNoiseFrames);
-noiseDistribution = round(noisePDF * nTrial);
-trialCount = cumsum(noiseDistribution);
-for i = 1:length(noiseDistribution)
-    if i==1
-        noiseFrames(1:noiseDistribution(i))=1;
-    else
-        startrow = trialCount(i) - noiseDistribution(i);
-        endrow = trialCount(i);
-        noiseFrames(startrow:endrow) = i;
+if noisePeriods == 1
+    noiseFrames = zeros(nTrial, 1);
+    maxNoiseFrames = maxNoiseDuration/vizPresentationRate;
+    noiseMin = round(minNoiseDuration/vizPresentationRate); %in frames
+    signalMin = round(minSignalDuration/vizPresentationRate); %in frames
+    noisePDF = discrete_bounded_hazard_rate(expLambda, maxNoiseFrames);
+    noiseDistribution = round(noisePDF * nTrial);
+    trialCount = cumsum(noiseDistribution);
+    for i = 1:length(noiseDistribution)
+        if i==1
+            noiseFrames(1:noiseDistribution(i))=1;
+        else
+            startrow = trialCount(i) - noiseDistribution(i);
+            endrow = trialCount(i);
+            noiseFrames(startrow:endrow) = i;
+        end
     end
+    
+    noise1Frames = noiseFrames + noiseMin;
+    noise1Frames = noise1Frames(randperm(length(noise1Frames)));
+    noise2Frames = noise1Frames(randperm(length(noise1Frames)));
+    signal1Frames = noiseFrames + signalMin;
+    signal1Frames = signal1Frames(randperm(length(signal1Frames)));
 end
-
-noise1Frames = noiseFrames + noiseMin;
-noise1Frames = noise1Frames(randperm(length(noise1Frames)));
-noise2Frames = noise1Frames(randperm(length(noise1Frames)));
-signal1Frames = noiseFrames + signalMin;
-signal1Frames = signal1Frames(randperm(length(signal1Frames)));
 
 if noisePeriods==0
     nFrames = noNoiseTrialDuration / vizPresentationRate;
@@ -74,7 +77,9 @@ end
 if mod(nFrames,2)>0
     nFrames=nFrames+1;
 end
-signal2Frames = nFrames - (noise1Frames + noise2Frames + signal1Frames);
+if noisePeriods==1
+    signal2Frames = nFrames - (noise1Frames + noise2Frames + signal1Frames);
+end
 trialDuration = nFrames*vizPresentationRate;
 
 %% create arrays to hold values
@@ -103,24 +108,18 @@ entropy = zeros(length(p), 1);
 for i = 1:length(p)
     entropy(i) = computeEntropy(p(i));
 end
-
 % create memory evidence stream
 memoryEvidence = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
-% define analytic solution for memory
-% expectedMemValue = repelem([1:memoryThinning]', round(nFrames/memoryThinning))*cue;
-
-% define viz evidence changepoints 
-signal1Onsets = noise1Frames + 1;
-noise2Onsets = noise1Frames + signal1Frames + 1;
-signal2Onsets = noise1Frames + signal1Frames + noise2Frames + 1;
-% initialize analytic solution matrix for vision
-% expectedVizValue = zeros(nFrames, nTrial);
 
 % create visual evidence stream
 if noisePeriods==0
     visionEvidence = (binornd(1,coherence, [nFrames,nTrial])*2-1) + normrnd(0,1,[nFrames,nTrial]);
     visionEvidence(:, congruentTrials+1:nTrial) = -1*visionEvidence(:, congruentTrials+1:nTrial);
 else
+    % define viz evidence changepoints 
+    signal1Onsets = noise1Frames + 1;
+    noise2Onsets = noise1Frames + signal1Frames + 1;
+    signal2Onsets = noise1Frames + signal1Frames + noise2Frames + 1;
     % make noise matrices
     if strcmp(flickerPaddingValue,'zero')==1
         flickerNoise = zeros(nFrames, nTrial);
@@ -162,13 +161,6 @@ else
             visionEvidence(targetIdx, trial) = target + flickerSampleNoise(targetIdx, trial);
             visionEvidence(lureIdx, trial) = -target + flickerSampleNoise(lureIdx, trial);
         end
-
-        % compute analytic solution for each trial
-        %sig1EV = (repelem([1:ceil(signal1Frames(trial)/2)]', 2)*coherence);
-        %sig2EV = (repelem([1:ceil(signal2Frames(trial)/2)]', 2)*coherence) + sig1EV(signal1Frames(trial));
-        %expectedVizValue(noise1Frames(trial)+1:noise2Onsets(trial)-1, trial) = sig1EV(1:signal1Frames(trial));
-        %expectedVizValue(noise2Onsets(trial):signal2Onsets(trial)-1, trial) = sig1EV(signal1Frames(trial));
-        %expectedVizValue(signal2Onsets(trial):nFrames, trial) = sig2EV(1:signal2Frames(trial));
     end
 end
 
@@ -299,8 +291,13 @@ for trial=1:nTrial
     end
 
     % populate startPoints matrix
-    startPoints(trial, 1) = decisionVariable(noise1Frames(trial), trial);
-    startPoints(trial, 2) = decisionVariable(signal2Onsets(trial)-1, trial);
+    if noisePeriods==1
+        startPoints(trial, 1) = decisionVariable(noise1Frames(trial), trial);
+        startPoints(trial, 2) = decisionVariable(signal2Onsets(trial)-1, trial);
+    else
+        startPoints(trial, 1) = NaN;
+        startPoints(trial, 2) = NaN;
+    end
 end
 toc
 
@@ -322,14 +319,17 @@ data.vizPresentationRate = vizPresentationRate;
 data.maxNoiseDuration = maxNoiseDuration;
 data.minNoiseDuration = minNoiseDuration;
 data.minSignalDuration = minSignalDuration;
-data.noise1Frames = noise1Frames;
-data.noise2Frames = noise2Frames;
-data.signal1Onsets = signal1Onsets;
-data.noise2Onsets = noise2Onsets;
-data.signal2Onsets = signal2Onsets;
-data.signal1Frames = signal1Frames;
-data.signal2Frames = signal2Frames;
-data.secondSignalMin = secondSignalMin;
+data.noisePeriods = noisePeriods;
+if noisePeriods==1
+    data.noise1Frames = noise1Frames;
+    data.noise2Frames = noise2Frames;
+    data.signal1Onsets = signal1Onsets;
+    data.noise2Onsets = noise2Onsets;
+    data.signal2Onsets = signal2Onsets;
+    data.signal1Frames = signal1Frames;
+    data.signal2Frames = signal2Frames;
+    data.secondSignalMin = secondSignalMin;
+end
 data.flickerAdditiveNoise = flickerAdditiveNoise;
 data.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
 data.flickerNoisePadding = flickerPadding;
@@ -348,7 +348,7 @@ if saveEvidence==1
 end
 
 if saveFlickerNoise==1
-    data.flickerNoise = flickerNoise;
+    data.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
 end
 
 if saveAccumulators==1
