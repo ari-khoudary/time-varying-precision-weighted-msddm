@@ -10,7 +10,7 @@ else
 end
 
 %%  
-trial = 2;
+trial = 10;
 
 % make dummy mem evidence variable for unweighted accumulator plot
 memEvidence = zeros(nFrames, 1);
@@ -27,9 +27,15 @@ nexttile;
 hold on
 plot(time, memoryPrecisions(:,trial));
 plot(time, visionPrecisions(:,trial));
-xregion(0, noise1Frames(trial), FaceAlpha=alpha);
-xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
-legend({'memory precision', 'vision precision', 'noise periods'});
+if delayPeriod
+    xline(trialDelays(trial), ':')
+    %xregion(0, noise1Frames(trial), FaceAlpha=alpha);
+    %xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
+end
+legend({'memory precision', 'vision precision'});
+if noisePeriods
+    legend({'memory precision', 'vision precision', 'noise periods'});
+end
 title('estimated precision');
 
 % drift rates
@@ -38,8 +44,11 @@ hold on
 plot(time, memoryDrifts(:, trial));
 plot(time, visionDrifts(:, trial));
 plot(time, visionDrifts(:,trial) + memoryDrifts(:,trial));
-xregion(0, noise1Frames(trial), FaceAlpha=alpha);
-xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
+if delayPeriod
+    xline(trialDelays(trial), ':')
+    %xregion(0, noise1Frames(trial), FaceAlpha=alpha);
+    %xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
+end
 legend({'memory drift', 'vision drift', 'DV drift (mem+viz)'});
 title('drift rates')
 
@@ -49,8 +58,11 @@ hold on
 plot(time, memoryAccumulator(:,trial));
 plot(time, visionAccumulator(:, trial));
 plot(time, decisionVariable(:, trial));
-xregion(0, noise1Frames(trial), FaceAlpha=alpha);
-xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
+if delayPeriod
+    xline(trialDelays(trial), ':')
+    %xregion(0, noise1Frames(trial), FaceAlpha=alpha);
+    %xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
+end
 if plotThresh
     yline(threshold);
     legend({'memory accumulator', 'vision accumulator', 'DV', '', '', 'threshold'}, 'Location', 'northwest');
@@ -65,8 +77,11 @@ hold on
 plot(time, cumsum(memEvidence));
 plot(time, cumsum(visionEvidence(:, trial)));
 plot(time, decisionVariable(:, trial));
-xregion(0, noise1Frames(trial), FaceAlpha=alpha);
-xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
+if delayPeriod
+    xline(trialDelays(trial), ':')
+    %xregion(0, noise1Frames(trial), FaceAlpha=alpha);
+    %xregion(noise2Onsets(trial), signal2Onsets(trial), FaceAlpha=alpha);
+end
 if plotThresh
     yline(threshold);
     legend({'memory', 'vision', 'DV (from model)', '', '', 'threshold'}, 'Location', 'northwest');

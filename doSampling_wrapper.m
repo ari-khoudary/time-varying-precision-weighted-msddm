@@ -1,11 +1,11 @@
 %% specify simulation settings
 clear
-nSub = 1;
-nTrial = 10; % per cue
-cue = [0.8];
-coherence = [0.51];
-threshold = [15];
-memoryThinning = [12];
+nSub = 5;
+nTrial = 100; % per cue
+cue = [0.5 0.6 0.7 0.8];
+coherence = [0.50 0.5005 0.51 0.52 0.53 0.54 0.55];
+threshold = [9 12 15 1e5];
+memoryThinning = [4 12 24 48];
 visionThinning = 1;
 vizPresentationRate = 1/60;
 
@@ -13,7 +13,7 @@ vizPresentationRate = 1/60;
 noisePeriods = 1; % logical: do you want 2 noise periods?
 noNoiseTrialDuration = 3; % in seconds: how long do you want trials to be if there are no noise periods?
 % parameters of the noise periods
-expLambda = 0.15; % parameter of the exponential defining the hazard rates 
+expLambda = 0.05; % parameter of the exponential defining the hazard rates 
 maxNoiseDuration = 2; % seconds
 minNoiseDuration = 1; % seconds
 minSignalDuration = 0.75; % seconds
@@ -38,7 +38,7 @@ savePrecisions = 1;
 saveDrifts = 1;
 
 % where do you want to save the results? (subdirectory of current dir)
-outDir = 'v3/';
+outDir = 'lowLambda_bigSim';
 
 %% create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
@@ -113,8 +113,8 @@ end
 toc
 
 %% plot results
-plotTrialParams;
-doSampling_summaryPlots;
+%plotTrialParams;
+%doSampling_summaryPlots;
 
 
 
