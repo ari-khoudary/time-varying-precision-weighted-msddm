@@ -102,12 +102,9 @@ alphaVis_idx = 3;
 betaVis_idx = 4;
 
 %% set up
-% precompute entropy distribution
+% x vector for PDFs
 p = 0.01:.01:0.99;
-entropy = zeros(length(p), 1);
-for i = 1:length(p)
-    entropy(i) = computeEntropy(p(i));
-end
+
 % create memory evidence stream
 memoryEvidence = (binornd(1, cue, [nFrames, nTrial])*2-1) + normrnd(0,1, [nFrames, nTrial]);
 
@@ -187,8 +184,9 @@ for trial=1:nTrial
 
             % compute normalized beta pdf
             visionPDF = betapdf(p, alphaVis, betaVis) ./ sum(betapdf(p, alphaVis, betaVis));
-            % compute precision as inverse belief-weighted entropy
-            visionPrecisions(frame, trial) = 1/sum(visionPDF .* entropy');
+            % compute precision 
+            visionEntropy = computeEntropy(visionPDF);
+            visionPrecisions(frame, trial) = 1/visionEntropy;
         end
 
         % store counter values
@@ -205,8 +203,9 @@ for trial=1:nTrial
 
             % compute normalized beta pdf
             memoryPDF = betapdf(p, alphaMem, betaMem) ./ sum(betapdf(p, alphaMem, betaMem));
-            % compute precision as inverse belief-weighted entropy
-            memoryPrecisions(frame, trial) = 1/sum(memoryPDF .* entropy');
+            % compute precision
+            memoryEntropy = computeEntropy(memoryPDF);
+            memoryPrecisions(frame, trial) = 1/memoryEntropy;
         else
             memoryPrecisions(frame,trial) = memoryPrecisions(frame-1,trial);
         end
