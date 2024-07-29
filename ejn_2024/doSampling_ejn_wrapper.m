@@ -5,13 +5,13 @@ nTrial = 10; % per cue
 cue = 0.8; % defines theta_memory
 coherence = 0.5; % defines theta_vision
 threshold = 15; % defines a in eq 7; irrelevant for all reported data
-memoryThinning = [20]; % defines gamma in eq8
+memoryThinning = [4:4:40]; % defines gamma in eq8, we tested at these levels
 visionThinning = 1;
 vizPresentationRate = 1/60; 
 trialDuration = 3;
 
 % early effect settings 
-delayPeriod = 1; % logical: do you want a delay period between cue and visual evidence?
+delayPeriod = 0; % logical: do you want a delay period between cue and visual evidence?
 delayDurations = 0.75 + [4 6 8]; % duration of cue + possible ISI values to be drawn at uniform
 
 % half neutral trials (boolean); only relevant if cue==0.5
@@ -31,7 +31,6 @@ outDir = pwd;
 %% create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
 allConfigs = repmat({struct('myfield', {})}, 1, nCombo);
-
 
 %% create config files
 
@@ -89,10 +88,6 @@ for a = 1:length(coherence)
     end
 end
 toc
-
-%% plot results
-% plotTrialParams_ejn;
-%doSampling_summaryPlots;
 
 
 

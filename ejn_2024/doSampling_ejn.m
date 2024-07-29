@@ -27,6 +27,7 @@ saveDrifts = config.saveDrifts;
 outDir = config.outDir;
 
 %% translate parameters into simulation-space
+rng("shuffle")
 if cue==0.5 && halfNeutralTrials==1
     nTrial=nTrial/2;
 end
@@ -82,13 +83,13 @@ if delayPeriod==1
     trialDelays = zeros(1, nTrial);
     for t = 1:nTrial
         if unifrnd(0,1) < 1/3
-            trialDelays(t) = delayDurations(1);
+            trialDelays(t) = delayDurations(1)/vizPresentationRate;
         elseif unifrnd(0,1) < 2/3
-            trialDelays(t) = delayDurations(2);
+            trialDelays(t) = delayDurations(2)/vizPresentationRate;
         else
-            trialDelays(t) = delayDurations(3);
+            trialDelays(t) = delayDurations(3)/vizPresentationRate;
         end
-        visionEvidence(1:(trialDelays(t)/vizPresentationRate), t) = 0;
+        visionEvidence(1:trialDelays(t), t) = 0;
     end
 end
 
