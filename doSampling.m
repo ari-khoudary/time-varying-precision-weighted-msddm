@@ -71,7 +71,7 @@ end
 if noisePeriods==0
     nFrames = noNoiseTrialDuration / vizPresentationRate;
 else
-    nFrames = max(signal1Frames) + 2*maxNoiseFrames + signalMin + secondSignalMin;
+    nFrames = round(max(signal1Frames) + 2*maxNoiseFrames + signalMin + secondSignalMin);
 end
 % ensure an event amount of frames for computational convenience
 if mod(nFrames,2)>0
