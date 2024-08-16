@@ -5,7 +5,7 @@ nTrial = 10; % per cue
 cue = 0.8; % defines theta_memory
 coherence = 0.5; % defines theta_vision
 threshold = 15; % defines a in eq 7; irrelevant for all reported data
-memoryThinning = [4:4:40]; % defines gamma in eq8, we tested at these levels
+memoryThinning = [28]; % defines gamma in eq8, we tested at these levels
 visionThinning = 1;
 vizPresentationRate = 1/60; 
 trialDuration = 3;
@@ -26,7 +26,7 @@ savePrecisions = 1;
 saveDrifts = 1;
 
 % where do you want to save the results? (subdirectory of current dir)
-outDir = pwd;
+outDir = 'extended_results';
 
 %% create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);

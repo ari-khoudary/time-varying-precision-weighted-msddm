@@ -11,7 +11,7 @@ else
 end
 
 %%  
-trial = 1;
+trial = 5;
 
 % make dummy mem evidence variable for unweighted accumulator plot
 memEvidence = zeros(nFrames, 1);
