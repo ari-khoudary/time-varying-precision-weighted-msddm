@@ -85,6 +85,7 @@ trialDuration = nFrames*vizPresentationRate;
 %% create arrays to hold values
 choices = zeros(nTrial, 2); %raw choice; forced choice (state of accumulator)
 RTs = zeros(nTrial, 1);
+confidence = zeros(nTrial, 2);
 startPoints = zeros(nTrial, 2); %DV start point in first and second noise periods
 memoryAccumulator = zeros(nFrames, nTrial);
 visionAccumulator = zeros(nFrames, nTrial);
@@ -297,6 +298,13 @@ for trial=1:nTrial
         startPoints(trial, 1) = NaN;
         startPoints(trial, 2) = NaN;
     end
+
+    % compute & store confidence
+    accumulatorDifference = abs(memoryAccumulator(boundaryIdx, trial) - visionAccumulator(boundaryIdx,trial));
+    differenceFromVis = abs(decisionVariable(boundaryIdx, trial) - visionAccumulator(boundaryIdx, trial));
+    confidence(trial, 1) = accumulatorDifference;
+    confidence(trial, 2) = differenceFromVis;
+
 end
 toc
 
@@ -310,6 +318,7 @@ data.cue = cue;
 data.coherence = coherence;
 data.threshold = threshold;
 data.congruent = logical(congruent);
+data.confidence = confidence;
 data.memoryThinning = memoryThinning;
 data.visionThinning = visionThinning;
 data.nFrames = nFrames;

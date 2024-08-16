@@ -1,11 +1,11 @@
 %% specify simulation settings
 clear
-nSub = 5;
+nSub = 9;
 nTrial = 100; % per cue
-cue = [0.5 0.6 0.7 0.8];
-coherence = [0.50 0.5005 0.51 0.52 0.53 0.54 0.55];
-threshold = [9 12 15 1e5];
-memoryThinning = [4 12 24 48];
+cue = [0.5 0.8];
+coherence = [0.52];
+threshold = [7];
+memoryThinning = [12];
 visionThinning = 1;
 vizPresentationRate = 1/60;
 
@@ -14,13 +14,13 @@ noisePeriods = 1; % logical: do you want 2 noise periods?
 noNoiseTrialDuration = 3; % in seconds: how long do you want trials to be if there are no noise periods?
 % parameters of the noise periods
 expLambda = 0.05; % parameter of the exponential defining the hazard rates 
-maxNoiseDuration = 2; % seconds
-minNoiseDuration = 1; % seconds
-minSignalDuration = 0.75; % seconds
-secondSignalMin = 1; % value to be added to signalMin to create a second signal period of additional length
+maxNoiseDuration = 3.25; % seconds
+minNoiseDuration = 1.25; % seconds
+minSignalDuration = 0.38; % seconds
+secondSignalMin = 0.5; % value to be added to signalMin to create a second signal period of additional length
 
 % half neutral trials (boolean)
-halfNeutralTrials = 0;
+halfNeutralTrials = 1;
 
 % visual evidence noise
 flickerAdditiveNoise = 1;  % logical; do you want to add noise to each sample of visual evidence?
@@ -29,16 +29,16 @@ flickerPadding = 1;  % logical; do you want to pad each signal frame with a nois
 flickerPaddingValue = 'zero'; % string; how do you want to model noise frames? options are zeros, zero-centered gaussian, more to come
 
 % do you want to save frame-by-frame information for each trial?
-saveEvidence = 1;
-saveFlickerNoise = 1;
+saveEvidence = 0;
+saveFlickerNoise = 0;
 saveAccumulators = 1;
 saveDV = 1;
-saveCounters = 1;
-savePrecisions = 1;
-saveDrifts = 1;
+saveCounters = 0;
+savePrecisions = 0;
+saveDrifts = 0;
 
 % where do you want to save the results? (subdirectory of current dir)
-outDir = 'lowLambda_bigSim';
+outDir = 'summer_inst_2024';
 
 %% create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
