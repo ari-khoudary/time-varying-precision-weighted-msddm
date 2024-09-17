@@ -1,11 +1,11 @@
 %% specify simulation settings
 clear
-nSub = 9;
+nSub = 100;
 nTrial = 100; % per cue
 cue = [0.5 0.8];
-coherence = [0.52];
-threshold = [7];
-memoryThinning = [12];
+coherence = [0.5395];
+threshold = [5];
+memoryThinning = 12;
 visionThinning = 1;
 vizPresentationRate = 1/60;
 
@@ -29,7 +29,7 @@ flickerPadding = 1;  % logical; do you want to pad each signal frame with a nois
 flickerPaddingValue = 'zero'; % string; how do you want to model noise frames? options are zeros, zero-centered gaussian, more to come
 
 % do you want to save frame-by-frame information for each trial?
-saveEvidence = 0;
+saveEvidence = 1;
 saveFlickerNoise = 0;
 saveAccumulators = 1;
 saveDV = 1;
@@ -38,7 +38,7 @@ savePrecisions = 0;
 saveDrifts = 0;
 
 % where do you want to save the results? (subdirectory of current dir)
-outDir = 'summer_inst_2024';
+outDir = 'contextCues_steadyState';
 
 %% create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
