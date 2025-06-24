@@ -1,0 +1,8 @@
+*.Rhistory
+*.RData
+*.DS_Store
+ccn_2022/manuscript/
+ccn_2022/poster/
+x_old/
+sim_figures/
+sim_files/
