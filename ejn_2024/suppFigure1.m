@@ -7,7 +7,7 @@ thinning_levels = [4:4:40];
 figure;
 f1 = tiledlayout(5, 2);  
 for gamma = 1:length(thinning_levels)
-    load(['hanks_' num2str(thinning_levels(gamma)) 'thin.mat']);
+    load(['extended_results/hanks_' num2str(thinning_levels(gamma)) 'thin.mat']);
     t = hanks_trials(gamma);
     % plot
     nexttile;
@@ -22,7 +22,7 @@ end
 figure;
 f2 = tiledlayout(5, 2);
 for gamma = 1:length(thinning_levels)
-    load(['bornstein_' num2str(thinning_levels(gamma)) 'thin.mat']);
+    load(['extended_results/bornstein_' num2str(thinning_levels(gamma)) 'thin.mat']);
     t = bornstein_trials(gamma);
     vizOnset = data.trialDelays(t);
     % plot
@@ -37,5 +37,19 @@ for gamma = 1:length(thinning_levels)
     title(['gamma = ' num2str(thinning_levels(gamma))]);
 end
 
+%% plot drift rates
 
-        
+figure;
+f3 = tiledlayout(5, 2);  
+for gamma = 1:length(thinning_levels)
+    load(['extended_results/hanks_' num2str(thinning_levels(gamma)) 'thin.mat']);
+    t = hanks_trials(gamma);
+    % plot
+    nexttile;
+    hold on
+    yline(0);
+    plot(1:data.nFrames, data.memoryDrifts(:, t));
+    plot(1:data.nFrames, data.visionDrifts(:, t));
+    plot(1:data.nFrames, ((data.memoryDrifts(:,t) + data.visionDrifts(:,t))/2));
+    title(['gamma = ' num2str(thinning_levels(gamma))]);
+end 

@@ -28,12 +28,13 @@ nexttile;
 hold on
 plot(time, memoryPrecisions(:,trial));
 plot(time, visionPrecisions(:,trial));
+plot(time, (memoryPrecisions(:, trial) + visionPrecisions(:,trial)) / 2)
 if delayPeriod
     xline(trialDelays(trial), ':')
 end
 legend({'memory precision', 'vision precision'});
 if delayPeriod
-    legend({'memory precision', 'vision precision', 'onset of viz ev'});
+    legend({'memory precision', 'vision precision', 'avg precision''onset of viz ev'});
 end
 title('estimated precision');
 
