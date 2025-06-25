@@ -1,7 +1,7 @@
 %% specify simulation settings
 clear
-nSub = 100;
-nTrial = 100; % per cue
+nSub = 1;
+nTrial = 16; % per cue
 cue = [0.5 0.8];
 coherence = [0.5395];
 threshold = [5];
@@ -38,7 +38,7 @@ savePrecisions = 0;
 saveDrifts = 0;
 
 % where do you want to save the results? (subdirectory of current dir)
-outDir = 'contextCues_steadyState';
+outDir = 'span_figure/';
 
 %% create cell array to store config files
 nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
