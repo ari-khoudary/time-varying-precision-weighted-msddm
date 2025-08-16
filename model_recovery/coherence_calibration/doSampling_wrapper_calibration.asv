@@ -1,11 +1,9 @@
 %% specify simulation settings
 clear
-nSub = 2; % per cell
+nSub = 500; % per cell
 nTrial = 1000; % per subject
-%coherence = 0.51:0.01:0.65;
-%threshold = 3:3:30;
-coherence = [0.5 0.55];
-threshold = [8 100];
+coherence = 0.51:0.01:0.65;
+threshold = 3:3:30;
 memoryThinning = 12;
 visionThinning = 1;
 vizPresentationRate = 1/60;
@@ -36,7 +34,7 @@ savePrecisions = 0;
 saveDrifts = 0;
 
 % where do you want to save the results? (subdirectory of current dir)
-outDir = 'results/';
+outDir = 'calibration_analysis/';
 
 %% create cell array to store config files
 nCombo = length(coherence) * length(threshold);
@@ -88,8 +86,8 @@ subIdx = zeros(totalIterations, 1);
 counter = 1;
 for c = 1:length(allConfigs)
     for subj = 1:nSub
-        configIdx(counter) = c;
-        subIdx(counter) = subj;
+        configIdx = c;
+        subIdx = subj;
         counter = counter + 1;
     end
 end
@@ -99,26 +97,13 @@ if isempty(gcp('nocreate'))
     parpool('local');
 end
 
-%% loop over iterations in parallel
-parfor it = 1:totalIterations
-    thisConfig = allConfigs{configIdx(it)};
-    thisConfig.subID = subIdx(it);
-    allData{it} = doSampling_calibration(thisConfig);
-end
+% loop over iterations in parallel
+parfor i = 1:totalIterations
+    thisConfig = allConfigs{configIdx(i)};
+    thisConfig.subID = subIdx(i);
+    allData
 
-
-
-%% concatenate all tables
+% concatenate all tables
 data = vertcat(allData{:});
 
-% close parallel pool
-delete(gcp('nocreate'));
 
-%% write out data as a csv
-
-if ~exist(outDir, 'dir')
-    mkdir(outDir);
-end
-timestamp = string(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
-filename = sprintf('results_%s.csv', timestamp);
-writetable(data, fullfile(outDir, filename));

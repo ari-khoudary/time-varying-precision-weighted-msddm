@@ -64,7 +64,8 @@ end
 subID = repelem(subID, nTrial)';
 coherence = repelem(coherence, nTrial)';
 threshold = repelem(threshold, nTrial)';
+trial = 1:nTrial;
 
-data = table(subID, coherence, threshold, rawChoiceRT, rawChoiceAccuracy, noChoice, forcedChoiceAccuracy);
+data = table(subID, trial, coherence, threshold, rawChoiceRT, rawChoiceAccuracy, noChoice, forcedChoiceAccuracy);
 end
 
