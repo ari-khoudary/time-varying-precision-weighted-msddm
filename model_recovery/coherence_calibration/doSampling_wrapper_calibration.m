@@ -1,11 +1,9 @@
 %% specify simulation settings
 clear
-nSub = 2; % per cell
+nSub = 500; % per cell
 nTrial = 1000; % per subject
-%coherence = 0.51:0.01:0.65;
-%threshold = 3:3:30;
-coherence = [0.5 0.55];
-threshold = [8 100];
+coherence = 0.51:0.01:0.65;
+threshold = 3:3:30;
 memoryThinning = 12;
 visionThinning = 1;
 vizPresentationRate = 1/60;

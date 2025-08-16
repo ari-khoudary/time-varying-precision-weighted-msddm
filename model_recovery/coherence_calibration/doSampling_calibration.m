@@ -9,11 +9,8 @@ vizPresentationRate = config.vizPresentationRate;
 noNoiseTrialDuration = config.noNoiseTrialDuration;
 flickerPadding = config.flickerNoisePadding;
 
-% where do you want to save the results?
-outDir = config.outDir;
-
-% set random seed as subID for reproducibility
-rng(subID);
+% reset random seed on every iteration for maximum stochasticity
+rng('shuffle');
 %% setup visual evidence & DVs on each trial
 
 % number of frames on each trial
@@ -65,6 +62,7 @@ subID = repelem(subID, nTrial)';
 coherence = repelem(coherence, nTrial)';
 threshold = repelem(threshold, nTrial)';
 trial = 1:nTrial;
+trial = trial';
 
 data = table(subID, trial, coherence, threshold, rawChoiceRT, rawChoiceAccuracy, noChoice, forcedChoiceAccuracy);
 end
