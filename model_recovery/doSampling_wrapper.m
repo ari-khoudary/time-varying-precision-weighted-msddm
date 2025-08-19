@@ -1,15 +1,21 @@
 %% specify simulation settings
 clear
-nSub = 1000;
-nTrial = 150; % per cue
+debug = 0;
 cue = [0.5 0.65 0.8];
-coherence = [0.5:0.01:0.65];
-threshold = [5:0.5:20];
-memoryThinning = [4:4:48];
+threshold_coherence = readmatrix("calibratedCoherences.csv");
+threshold_coherence = threshold_coherence(:, 1:2);
+memoryThinning = 4:4:48;
 visionThinning = 1;
 vizPresentationRate = 1/60;
+if ~debug
+    nSub = 500;
+    nTrial = 1000; 
+else
+    nSub = 1;
+    nTrial = 10;
+end
 
-% noise periods
+% noise periods -- correspond to expt design as of 08-2025
 noisePeriods = 1; % logical: do you want 2 noise periods?
 noNoiseTrialDuration = 3; % in seconds: how long do you want trials to be if there are no noise periods?
 % parameters of the noise periods
@@ -26,89 +32,108 @@ flickerAdditiveNoiseValue = 'gaussian';  % string; what kind of noise do you wan
 flickerPadding = 1;  % logical; do you want to pad each signal frame with a noise frame?
 flickerPaddingValue = 'zero'; % string; how do you want to model noise frames? options are zeros, zero-centered gaussian, more to come
 
-% do you want to save frame-by-frame information for each trial?
-saveEvidence = 0;
-saveFlickerNoise = 0;
-saveAccumulators = 0;
-saveDV = 0;
-saveCounters = 0;
-savePrecisions = 0;
-saveDrifts = 0;
-
 % where do you want to save the results? (subdirectory of current dir)
-outDir = 'data';
-
-%% create cell array to store config files
-nCombo = length(coherence)*length(cue)*length(threshold)*length(memoryThinning);
-allConfigs = repmat({struct('myfield', {})}, 1, nCombo);
+timestamp = string(datetime('now', 'Format', 'yyyy-MM-dd'));
+outDir = sprintf('results/%s/', timestamp);
+if ~exist(outDir, 'dir')
+    mkdir(outDir);
+end
 
 %% create config files
+nCombo = length(threshold_coherence) * length(memoryThinning) * length(cue);
+allConfigs = repmat({struct('myfield', {})}, 1, nCombo);
 
 counter=0;
-for a = 1:length(coherence)
+for a = 1:length(threshold_coherence)
     for b = 1:length(cue)
-        for c = 1:length(threshold)
-            for d = 1:length(memoryThinning)
+        for s = 1:length(memoryThinning)
 
-                counter=counter+1;
-                
-                config.nTrial = nTrial;
-                config.nSub = nSub;
-                config.coherence = coherence(a);
-                config.cue = cue(b);
-                config.threshold = threshold(c);
-                config.memoryThinning = memoryThinning(d);
-                config.visionThinning = visionThinning;
-                config.vizPresentationRate = vizPresentationRate;
-                config.noisePeriods = noisePeriods;
-                config.noNoiseTrialDuration = noNoiseTrialDuration;
-                
-                %config.maxNoiseDuration = maxNoiseDuration;
-                config.minNoiseDuration = minNoiseDuration;
-                config.minSignalDuration = minSignalDuration;
-                %config.secondSignalMin = secondSignalMin;
-                config.expLambda = expLambda;
-                
-                config.halfNeutralTrials = halfNeutralTrials;
-                config.flickerAdditiveNoise = flickerAdditiveNoise;
-                config.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
-                config.flickerNoisePadding = flickerPadding;
-                config.flickerPaddingValue = flickerPaddingValue;
-                config.saveEvidence = saveEvidence;
-                config.saveFlickerNoise = saveFlickerNoise;
-                config.saveAccumulators = saveAccumulators;
-                config.saveDV = saveDV;
-                config.saveCounters = saveCounters;
-                config.savePrecisions = savePrecisions;
-                config.saveDrifts = saveDrifts;
-                config.outDir = outDir;
+            counter=counter+1;
 
-                allConfigs{counter} = config;
-            end
+            config.nTrial = nTrial;
+            config.threshold = threshold_coherence(a, 1);
+            config.coherence = threshold_coherence(a, 2);
+            config.cue = cue(b);
+            config.memoryThinning = memoryThinning(s);
+            config.visionThinning = visionThinning;
+            config.vizPresentationRate = vizPresentationRate;
+            config.noisePeriods = noisePeriods;
+            config.noNoiseTrialDuration = noNoiseTrialDuration;
+
+            %config.maxNoiseDuration = maxNoiseDuration;
+            config.minNoiseDuration = minNoiseDuration;
+            config.minSignalDuration = minSignalDuration;
+            %config.secondSignalMin = secondSignalMin;
+            config.expLambda = expLambda;
+
+            config.halfNeutralTrials = halfNeutralTrials;
+            config.flickerAdditiveNoise = flickerAdditiveNoise;
+            config.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
+            config.flickerNoisePadding = flickerPadding;
+            config.flickerPaddingValue = flickerPaddingValue;
+            config.outDir = outDir;
+
+            allConfigs{counter} = config;
         end
     end
 end
 
-%% run simulation
+%% run simulation in parallel
+% calculate total number of iterations
+totalIterations = length(allConfigs) * nSub;
 
-counter=0;
-for a = 1:length(coherence)
-    for b = 1:length(cue)
-        for c = 1:length(threshold)
-            for d = 1:length(memoryThinning)
-                counter=counter+1;
-                thisConfig = allConfigs{counter};
-                sprintf(['running coherence=' num2str(coherence(a)) ', cue=' num2str(cue(b)) ', threshold=' num2str(threshold(c)) ' and thinning=' num2str(memoryThinning(d))])
-                for subj = 1:nSub
-                    thisConfig.subID = subj;
-                    doSampling(thisConfig);
-                end
-            end
-        end
+% initialize structure to store output of each iteraction
+allData = cell(totalIterations, 1);
+
+% create arrays for parallel processing
+configIdx = zeros(totalIterations, 1);
+subIdx = zeros(totalIterations, 1);
+
+% populate indices
+counter = 1;
+for s = 1:length(allConfigs)
+    for subj = 1:nSub
+        configIdx(counter) = s;
+        subIdx(counter) = subj;
+        counter = counter + 1;
     end
 end
 
+% start parallel pool
+if ~debug
+    if isempty(gcp('nocreate'))
+        parpool('local');
+    end
+end
 
+%% loop over iterations in parallel
+
+parfor it = 1:totalIterations
+    subIteration = allConfigs{configIdx(it)};
+    subIteration.subID = subIdx(it);
+    allData{it} = doSampling(subIteration);
+end
+
+% save one csv per subject
+if ~exist(outDir, 'dir')
+    mkdir(outDir);
+end
+
+for s = 1:nSub
+    subIts = find(subIdx == s);
+    combinedData = [];
+
+    for it = subIts'  % Loop through all iterations for this subject
+        if isempty(combinedData)
+            combinedData = allData{it};
+        else
+            combinedData = [combinedData; allData{it}];
+        end
+    end
+
+    outfile = [outDir 'sub' num2str(s) '.csv'];
+    writetable(combinedData, outfile);
+end
 
 
 

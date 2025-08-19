@@ -2,7 +2,6 @@ function data = doSampling(config)
 
 %% unpack params
 nTrial = config.nTrial; %per cue
-nSub = config.nSub;
 subID = config.subID;
 cue = config.cue;
 coherence = config.coherence;
@@ -12,28 +11,14 @@ visionThinning = config.visionThinning;
 vizPresentationRate = config.vizPresentationRate;
 noisePeriods = config.noisePeriods;
 expLambda = config.expLambda; 
-maxNoiseDuration = config.maxNoiseDuration;
 minNoiseDuration = config.minNoiseDuration;
 minSignalDuration = config.minSignalDuration;
-secondSignalMin = config.secondSignalMin;
 noNoiseTrialDuration = config.noNoiseTrialDuration;
 halfNeutralTrials = config.halfNeutralTrials;
 flickerAdditiveNoise = config.flickerAdditiveNoise;
 flickerAdditiveNoiseValue = config.flickerAdditiveNoiseValue;
 flickerPadding = config.flickerNoisePadding;
 flickerPaddingValue = config.flickerPaddingValue;
-
-% do you want to save any frame-by-frame information?
-saveEvidence = config.saveEvidence;
-saveFlickerNoise = config.saveFlickerNoise;
-saveAccumulators = config.saveAccumulators;
-saveDV = config.saveDV;
-saveCounters = config.saveCounters;
-savePrecisions = config.savePrecisions;
-saveDrifts = config.saveDrifts;
-
-% where do you want to save the results?
-outDir = config.outDir;
 
 %% translate parameters into simulation-space
 if cue==0.5 && halfNeutralTrials==1
@@ -85,7 +70,7 @@ end
 if noisePeriods==1
     signal2Frames = nFrames - (noise1Frames + noise2Frames + signal1Frames);
 end
-trialDuration = nFrames*vizPresentationRate;
+%trialDuration = nFrames*vizPresentationRate;
 
 %% create arrays to hold values
 choices = zeros(nTrial, 2); %raw choice; forced choice (state of accumulator)
@@ -98,7 +83,13 @@ memoryPrecisions = zeros(nFrames, nTrial);
 visionPrecisions = zeros(nFrames, nTrial);
 memoryDrift = zeros(nFrames, nTrial);
 visionDrift = zeros(nFrames, nTrial);
-counters = zeros(nFrames, 4, nTrial);
+counters = zeros(nFrames, 4, nTrial); 
+accumulatorDifference = NaN(nTrial, 1);
+differenceFromVis = NaN(nTrial,1);
+noise1Frames_obs = NaN(nTrial, 1);
+signal1Frames_obs = NaN(nTrial, 1);
+noise2Frames_obs = NaN(nTrial, 1);
+signal2Frames_obs = NaN(nTrial, 1);
 
 % create index variables
 alphaMem_idx = 1;
@@ -303,94 +294,52 @@ for trial=1:nTrial
     end
 
     % compute & store potential metrics of confidence
-    accumulatorDifference = abs(memoryAccumulator(boundaryIdx, trial) - visionAccumulator(boundaryIdx,trial));
-    differenceFromVis = abs(decisionVariable(boundaryIdx, trial) - visionAccumulator(boundaryIdx, trial));
+    accumulatorDifference(trial) = abs(memoryAccumulator(boundaryIdx, trial) - visionAccumulator(boundaryIdx,trial));
+    differenceFromVis(trial) = abs(decisionVariable(boundaryIdx, trial) - visionAccumulator(boundaryIdx, trial));
 
+    % compute & store actually "perceived" noise & signal durations
+    if boundaryIdx >= signal2Onsets(trial) 
+        noise1Frames_obs(trial) = noise1Frames(trial);
+        signal1Frames_obs(trial) = signal1Frames(trial);
+        noise2Frames_obs(trial) = noise2Frames(trial);
+        signal2Frames_obs(trial) = boundaryIdx - signal2Onsets(trial);
+    elseif boundaryIdx >= noise2Onsets(trial) && boundaryIdx < signal2Onsets(trial)
+        noise1Frames_obs(trial) = noise1Frames(trial);
+        signal1Frames_obs(trial) = signal1Frames(trial);
+        noise2Frames_obs(trial) = boundaryIdx - noise2Onsets(trial);
+        signal2Frames_obs(trial) = NaN;
+    elseif boundaryIdx >= signal1Onsets(trial) && boundaryIdx < noise2Onsets(trial)
+        noise1Frames_obs(trial) = noise1Frames(trial);
+        signal1Frames_obs(trial) = boundaryIdx - signal1Onsets(trial);
+        noise2Frames_obs(trial) = NaN;
+        signal2Frames_obs(trial) = NaN;
+    else
+        noise1Frames_obs(trial) = boundaryIdx;
+        signal1Frames_obs(trial) = NaN;
+        noise2Frames_obs(trial) = NaN;
+        signal2Frames_obs(trial) = NaN;
+    end
 end
 
-%% store results
-% simulation settings
-data.nTrial = nTrial;
-data.subID = subID;
-data.nSub = nSub;
-data.trialDuration = trialDuration;
-data.cue = cue;
-data.coherence = coherence;
-data.threshold = threshold;
-data.congruent = logical(congruent);
-data.accumulatorDifference = accumulatorDifference;
-data.differenceFromVis = differenceFromVis;
-data.memoryThinning = memoryThinning;
-data.visionThinning = visionThinning;
-data.nFrames = nFrames;
-data.trialDuration = trialDuration;
-data.vizPresentationRate = vizPresentationRate;
-data.maxNoiseDuration = maxNoiseDuration;
-data.minNoiseDuration = minNoiseDuration;
-data.minSignalDuration = minSignalDuration;
-data.noisePeriods = noisePeriods;
-if noisePeriods==1
-    data.noise1Frames = noise1Frames;
-    data.noise2Frames = noise2Frames;
-    data.signal1Onsets = signal1Onsets;
-    data.noise2Onsets = noise2Onsets;
-    data.signal2Onsets = signal2Onsets;
-    data.signal1Frames = signal1Frames;
-    data.signal2Frames = signal2Frames;
-    data.secondSignalMin = secondSignalMin;
-end
-data.flickerAdditiveNoise = flickerAdditiveNoise;
-data.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
-data.flickerNoisePadding = flickerPadding;
-data.flickerPaddingValue = flickerPaddingValue;
-data.counters = counters;
-data.startPoints = startPoints;
+%% save results as data tables
+subID = repelem(subID, nTrial)';
+coherence = repelem(coherence, nTrial)';
+threshold = repelem(threshold, nTrial)';
+cue = repelem(cue, nTrial)';
+memoryThinning = repelem(memoryThinning, nTrial)';
+trial = 1:nTrial;
+trial = trial';
+freeChoice = choices(:, 1);
+forcedChoice = choices(:, 2);
+nFrames = repelem(nFrames, nTrial)';
+startPoint_signal1 = startPoints(:, 1);
+startPoint_signal2 = startPoints(:, 2);
 
-% behavior
-data.choices = choices;
-data.RT = RTs;
+data = table(subID, trial, cue, coherence, threshold, memoryThinning, congruent, freeChoice, RTs, forcedChoice, ...
+    noise1Frames_obs, signal1Frames_obs, noise2Frames_obs, signal2Frames_obs, ...
+noise1Frames, signal1Onsets, signal1Frames, noise2Onsets, noise2Frames, signal2Onsets, signal2Frames, nFrames, ...
+startPoint_signal1, startPoint_signal2, accumulatorDifference, differenceFromVis);
 
-% optional frame-by-frame info
-if saveEvidence==1
-    data.memoryEvidence = memoryEvidence;
-    data.visionEvidence = visionEvidence;
-end
-
-if saveFlickerNoise==1
-    data.flickerAdditiveNoiseValue = flickerAdditiveNoiseValue;
-end
-
-if saveAccumulators==1
-    data.memoryAccumulator = memoryAccumulator;
-    data.visionAccumulator = visionAccumulator;
-end
-
-if saveDV==1
-    data.decisionVariable = decisionVariable;
-end
-
-if saveCounters==1
-    data.counters=counters;
-end
-
-if savePrecisions==1
-    data.memoryPrecisions = memoryPrecisions;
-    data.visionPrecisions = visionPrecisions;
-end
-
-if saveDrifts==1
-    data.memoryDrifts = memoryDrift;
-    data.visionDrifts = visionDrift;
-end
-
-%% save results
-
-if ~exist(outDir, 'dir')
-    mkdir(outDir);
-end
-
-outfile = [outDir '/' num2str(cue) 'cue_' num2str(coherence) 'coh_' num2str(threshold) 'thresh_' num2str(memoryThinning) 'thin_' num2str(nTrial) 'trial_' 'sub' num2str(subID) '.mat'];
-save(outfile, 'data')
 end
 
 
