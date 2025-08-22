@@ -24,7 +24,7 @@ minNoiseDuration = 0.75; % seconds
 minSignalDuration = 0.5; % seconds
 
 % half neutral trials (boolean)
-halfNeutralTrials = 1;
+halfNeutralTrials = 0;
 
 % visual evidence noise
 flickerAdditiveNoise = 1;  % logical; do you want to add noise to each sample of visual evidence?
@@ -37,6 +37,32 @@ timestamp = string(datetime('now', 'Format', 'yyyy-MM-dd'));
 outDir = sprintf('results/%s/', timestamp);
 if ~exist(outDir, 'dir')
     mkdir(outDir);
+end
+
+% Create log directory
+logDir = sprintf('%s/logs/', outDir);
+if ~exist(logDir, 'dir')
+    mkdir(logDir);
+end
+
+%% Get array job parameters
+% Check if running as array job
+if isempty(getenv('SLURM_ARRAY_TASK_ID'))
+    % Running locally or single job - process all subjects
+    startSub = 1;
+    endSub = nSub;
+    jobID = 1;
+else
+    % Running as array job
+    arrayID = str2double(getenv('SLURM_ARRAY_TASK_ID'));
+    jobID = arrayID;
+    
+    % Determine subjects per job
+    subsPerJob = 10; % Process 10 subjects per array task
+    startSub = (arrayID - 1) * subsPerJob + 1;
+    endSub = min(arrayID * subsPerJob, nSub);
+    
+    fprintf('Array job %d processing subjects %d to %d\n', arrayID, startSub, endSub);
 end
 
 %% create config files
@@ -60,10 +86,8 @@ for a = 1:length(threshold_coherence)
             config.noisePeriods = noisePeriods;
             config.noNoiseTrialDuration = noNoiseTrialDuration;
 
-            %config.maxNoiseDuration = maxNoiseDuration;
             config.minNoiseDuration = minNoiseDuration;
             config.minSignalDuration = minSignalDuration;
-            %config.secondSignalMin = secondSignalMin;
             config.expLambda = expLambda;
 
             config.halfNeutralTrials = halfNeutralTrials;
@@ -72,72 +96,92 @@ for a = 1:length(threshold_coherence)
             config.flickerNoisePadding = flickerPadding;
             config.flickerPaddingValue = flickerPaddingValue;
             config.outDir = outDir;
+            config.logDir = logDir;
 
             allConfigs{counter} = config;
         end
     end
 end
 
-%% run simulation in parallel
-% calculate total number of iterations
-totalIterations = length(allConfigs) * nSub;
+%% Initialize progress tracking
+progressFile = sprintf('%s/progress_job_%d.mat', logDir, jobID);
+completedFile = sprintf('%s/completed_subjects.txt', logDir);
 
-% initialize structure to store output of each iteraction
-allData = cell(totalIterations, 1);
-
-% create arrays for parallel processing
-configIdx = zeros(totalIterations, 1);
-subIdx = zeros(totalIterations, 1);
-
-% populate indices
-counter = 1;
-for s = 1:length(allConfigs)
-    for subj = 1:nSub
-        configIdx(counter) = s;
-        subIdx(counter) = subj;
-        counter = counter + 1;
-    end
+% Check for existing progress
+if exist(progressFile, 'file')
+    load(progressFile, 'completedSubjects', 'completedConfigs');
+    fprintf('Resuming from previous run. Found %d completed subjects.\n', length(completedSubjects));
+else
+    completedSubjects = [];
+    completedConfigs = [];
 end
 
+%% Process subjects in this job
+totalSubsThisJob = endSub - startSub + 1;
+processedSubsThisJob = 0;
+
 % start parallel pool
-if ~debug
+if ~debug && totalSubsThisJob > 1
     if isempty(gcp('nocreate'))
         parpool('local');
     end
 end
 
-%% loop over iterations in parallel
-
-parfor it = 1:totalIterations
-    subIteration = allConfigs{configIdx(it)};
-    subIteration.subID = subIdx(it);
-    allData{it} = doSampling(subIteration);
-end
-
-% save one csv per subject
-if ~exist(outDir, 'dir')
-    mkdir(outDir);
-end
-
-for s = 1:nSub
-    subIts = find(subIdx == s);
+%% Main processing loop
+for subj = startSub:endSub
+    % Check if this subject is already completed
+    if ismember(subj, completedSubjects)
+        fprintf('Subject %d already completed, skipping.\n', subj);
+        continue;
+    end
+    
+    fprintf('Processing subject %d of %d (job %d)\n', subj, nSub, jobID);
+    
+    % Process all configs for this subject
+    subjectData = cell(length(allConfigs), 1);
+    
+    % Run all configurations for this subject in parallel
+    parfor configIdx = 1:length(allConfigs)
+        config = allConfigs{configIdx};
+        config.subID = subj;
+        subjectData{configIdx} = doSampling(config);
+    end
+    
+    % Combine all data for this subject
     combinedData = [];
-
-    for it = subIts'  % Loop through all iterations for this subject
+    for configIdx = 1:length(allConfigs)
         if isempty(combinedData)
-            combinedData = allData{it};
+            combinedData = subjectData{configIdx};
         else
-            combinedData = [combinedData; allData{it}];
+            combinedData = [combinedData; subjectData{configIdx}];
         end
     end
-
-    outfile = [outDir 'sub' num2str(s) '.csv'];
+    
+    % Write subject data immediately
+    outfile = sprintf('%s/sub%d.csv', outDir, subj);
     writetable(combinedData, outfile);
+    
+    % Update progress tracking
+    completedSubjects = [completedSubjects, subj];
+    save(progressFile, 'completedSubjects', 'completedConfigs');
+    
+    % Log completion
+    logEntry = sprintf('%s: Job %d completed subject %d\n', datetime('now'), jobID, subj);
+    appendToLog(completedFile, logEntry);
+    
+    processedSubsThisJob = processedSubsThisJob + 1;
+    fprintf('Completed subject %d (%d/%d in this job)\n', subj, processedSubsThisJob, totalSubsThisJob);
 end
 
+fprintf('Job %d completed processing %d subjects.\n', jobID, processedSubsThisJob);
 
-
-
-
-
-
+%% Helper function to append to log file
+function appendToLog(filename, message)
+    fid = fopen(filename, 'a');
+    if fid == -1
+        warning('Could not open log file: %s', filename);
+        return;
+    end
+    fprintf(fid, message);
+    fclose(fid);
+end
