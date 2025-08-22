@@ -341,7 +341,3 @@ noise1Frames, signal1Onsets, signal1Frames, noise2Onsets, noise2Frames, signal2O
 startPoint_signal1, startPoint_signal2, accumulatorDifference, differenceFromVis);
 
 end
-
-
-
-
