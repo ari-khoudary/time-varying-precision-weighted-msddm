@@ -26,10 +26,6 @@ coherence = args.coherence
 results_dir = f'results/{coherence}coh'
 os.makedirs(results_dir, exist_ok=True)
 
-# make df filtering robust against type mismatches in bash and python
-subject_id_str = str(subject_id)
-subject_id_int = int(subject_id) 
-
 # define drift function
 def drift(t, congruent, cue, signal1_onset, noise2_onset, signal2_onset,
                 n1_weak, n1_strong, n1_neut, 
