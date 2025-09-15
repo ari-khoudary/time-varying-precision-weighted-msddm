@@ -1,0 +1,128 @@
+---
+title: "coherence calibration for model recovery"
+author: "ari"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(patchwork)
+summary_df <- read.csv('results/results_2025-08-15_summary_naAcc.csv')
+```
+
+# simulation code
+here are the relevant bits of MATLAB code that I used to generate the data being analyzed in this notebook:
+```{matlab}
+%%%% in the wrapper script %%%%
+nSub = 500; % per cell
+nTrial = 1000; % per subject
+coherence = 0.51:0.01:0.65;
+threshold = 3:3:30;
+memoryThinning = 12;
+visionThinning = 1;
+vizPresentationRate = 1/60;
+noisePeriods = 0; 
+noNoiseTrialDuration = 3; 
+
+%%%% in the simulation script %%%%
+visionEvidence = (binornd(1,coherence, [nFrames*2,nTrial])*2-1) + normrnd(0,1,[nFrames*2,nTrial]);
+    noiseFrames = 1:2:size(visionEvidence, 1); % returns the index of every other row
+    visionEvidence(noiseFrames, :) = 0; 
+    
+decisionVariable = cumsum(visionEvidence, 1);
+    
+% identify trials where DV hit either threshold
+mask = abs(decisionVariable) > threshold;
+
+% get index of first threshold passing
+[~, rawChoiceRT] = max(mask, [], 1); 
+rawChoiceRT = transpose(rawChoiceRT); 
+
+% indicate which trials never made it to threshold
+noChoice = transpose(~any(mask, 1));
+
+% set the rawChoiceRTs for those trials as NaN
+rawChoiceRT(noChoice) = NaN;
+
+% determine if DV value at threshold crossing corresponds to correct answer (positive value)
+rawChoiceAccuracy = NaN(nTrial, 1);
+forcedChoiceAccuracy = NaN(nTrial, 1);
+
+for i = 1:nTrial
+    if isnan(rawChoiceRT(i))
+        forcedChoiceAccuracy(i) = decisionVariable(end, i) > 0;
+        rawChoiceAccuracy(i) = 0;
+    else
+        rawChoiceAccuracy(i) = decisionVariable(rawChoiceRT(i), i) > 0;
+        forcedChoiceAccuracy(i) = rawChoiceAccuracy(i);
+    end
+end
+```
+
+This generated a CSV with 75,000,000 trial-level datapoints; 1000 per simulated subject, where each subject was presented with each combination of coherence & threshold. I created a summary dataframe with 75,000 observations, so that each cell is the average over the 1000 trials that each random "subject" contributed. Plotted below are the mean + SE values for each combination of threshold & coherence
+
+# accuracy: raw choice vs. forced choice
+```{r, fig.width=12}
+
+p1 <- summary_df %>%
+  mutate(threshold = factor(threshold)) %>%
+  ggplot(aes(x=coherence, y=rawChoice_accuracy, color=threshold, group=threshold)) +
+  theme_bw() + geom_hline(yintercept = 0.5, color='gray30') +
+  stat_summary(fun = 'mean', geom='line') +
+  stat_summary(fun.data = 'mean_se', geom='pointrange') +
+  geom_hline(yintercept = 0.7, linetype = 'dashed') + 
+  facet_wrap(~ threshold) +
+  labs(title = 'raw choice accuracy') 
+
+## plot accuracy: forced choice
+p2 <- summary_df %>%
+  mutate(threshold = factor(threshold)) %>%
+  ggplot(aes(x=coherence, y=forcedChoice_accuracy, color=threshold, group=threshold)) +
+  theme_bw() + geom_hline(yintercept = 0.5, color='gray30') +
+  stat_summary(fun = 'mean', geom='line') +
+  stat_summary(fun.data = 'mean_se', geom='pointrange') +
+  geom_hline(yintercept = 0.7, linetype = 'dashed') + 
+  facet_wrap(~ threshold) +
+  labs(title = 'forced choice accuracy') 
+
+p1 + p2 + plot_layout(guides = 'collect')
+```
+
+very nice curves :) and nice to see the difference in slopes for coherence between raw & forced accuracy. 
+
+because the free-response version is closer to what subjects have to do on the task, I think we should use that way of looking at the data to decide on tuples of coherence & threshold to run in the generating model. 
+
+# RTs for raw choice
+here is what RTs look like for the raw choice data:
+```{r, echo=F}
+summary_df %>%
+  mutate(threshold = factor(threshold)) %>%
+  ggplot(aes(x=coherence, y=rawChoice_rt, color=threshold, group=threshold)) +
+  theme_bw() +
+  stat_summary(fun = 'mean', geom='line') +
+  stat_summary(fun.data = 'mean_se', geom='pointrange') +
+  facet_wrap(~ threshold) +
+  labs(title = 'raw choice RT') 
+```
+
+# Extracting threshold-level combos of coherence & threshold
+```{r}
+summary_df %>% group_by(threshold, coherence) %>% summarise(rawChoice = mean(rawChoice_accuracy))
+
+out_df <- summary_df %>%
+  group_by(threshold, coherence) %>% 
+  summarise(rawChoice = round(mean(rawChoice_accuracy), 3)) %>%
+  ungroup() %>%
+  group_by(threshold) %>%
+  slice_min(abs(rawChoice - 0.7), n = 1, with_ties = F)
+
+out_df
+```
+
+```{r, include=F}
+
+write.csv(out_df, '../calibratedCoherences.csv', row.names = F)
+
+```
