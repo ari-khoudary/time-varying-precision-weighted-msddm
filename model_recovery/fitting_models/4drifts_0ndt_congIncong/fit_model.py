@@ -142,13 +142,13 @@ try:
     params = model.parameters()
     
     # Save text results (basic summary)
-    with open(os.path.join(results_dir, f's{subject_id}_results.txt'), 'w') as f:
-        f.write(f'Subject: {subject_id}\nLoss: {loss}\nParameters:\n')
+    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_results.txt'), 'w') as f:
+        f.write(f'Subject: {subject_id}\n Coherence: {coherence}\n Loss: {loss}\nParameters:\n')
         for param, value in params.items():
             f.write(f'{param}: {value}\n')
 
     original_stdout = sys.stdout
-    with open(os.path.join(results_dir, f's{subject_id}_summary.txt'), "w") as f:
+    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_summary.txt'), "w") as f:
         sys.stdout = f
         model.show()
     sys.stdout = original_stdout
