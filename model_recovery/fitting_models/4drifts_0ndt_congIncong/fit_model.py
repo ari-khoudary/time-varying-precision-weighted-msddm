@@ -99,21 +99,24 @@ def drift(t, congruent, cue, signal1_onset, noise2_onset, signal2_onset,
 
 try:
     # Load and filter data
-    df = pd.read_csv(f'../../../{args.subject_id}.csv') 
+    df = pd.read_csv(f'../../simulated_data/sub{args.subject_id}.csv') 
+    # remove trials with no free choice
     df = df.dropna(subset=['freeChoice'])
+    # convert RTs & changepoints to seconds
+    df[['RTs', 'signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['RTs', 'signal1_onset', 'noise2_onset', 'signal2_onset']] / 60
+    # change any unobserved changepoints to 0
     df[['signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['signal1_onset', 'noise2_onset', 'signal2_onset']].fillna(0)
-    subject_df = df[(df['subID'] == subject_id_str) | 
-                (df['subID'] == subject_id_int)].copy()
-    
-    if len(subject_df) == 0:
-        error_msg = f"Error: No data found for subject {subject_id}"
-        with open(os.path.join(results_dir, f's{subject_id}_error.txt'), 'w') as f:
-            f.write(error_msg)
-        sys.exit(1)
+    # convert congruent to a string
+    df['congruent'] = df.apply(lambda row: 'neutral' if row['cue'] == 0.5 
+                          else ('incongruent' if row['congruent'] == 0 
+                               else 'congruent'), axis=1)
+
+    # write out tidied data for sanity checking
+    df.to_csv(f'../../simulated_data/sub{args.subject_id}_tidy.csv', index=False)
     
     # Create sample
     sample = pyddm.Sample.from_pandas_dataframe(
-        subject_df, rt_column_name='RTs', choice_column_name='freeChoice'
+        df, rt_column_name='RTs', choice_column_name='freeChoice'
     )
     
     # initialize model
@@ -123,12 +126,12 @@ try:
         bound="B",
         T_dur = 4.1,
         nondecision=0,
-        parameters={'B': (0.5, 12), 
-                    'noise1_cong': (0, 10), 'noise1_neut': (0,10),
-                    'signal1_cong': (0, 10), 'signal1_incong': (0, 10), 'signal1_neut': (0, 10),
-                    'noise2_cong': (0, 10), 'noise2_incong': (0,10), 'noise2_neut': (0,10),
-                    'signal2_cong': (0, 10), 'signal2_incong': (0, 10), 'signal2_neut': (0,10)},
-        conditions = ['trueCongruence', 'signal1_onset', 'noise2_onset', 'signal2_onset']
+        parameters={'B': (0.5, 35), 
+                    'n1_weak': (0, 20), 'n1_strong': (0,20), 'n1_neut': (0,20),
+                    's1_cong_weak': (0, 20), 's1_cong_strong': (0, 20), 's1_incong_weak': (0, 20), 's1_incong_strong': (0, 20), 's1_neut': (0, 20),
+                    'n2_cong_weak': (0, 20), 'n2_cong_strong': (0,20), 'n2_incong_weak': (0,20), 'n2_incong_strong': (0,20), 'n2_neut': (0,20),
+                    's2_cong_weak': (0, 20), 's2_cong_strong': (0, 20), 's2_incong_weak': (0, 20), 's2_incong_strong': (0, 20), 's2_neut': (0,20)},
+        conditions = ['congruent', 'cue', 'signal1_onset', 'noise2_onset', 'signal2_onset']
     )
 
     # fit

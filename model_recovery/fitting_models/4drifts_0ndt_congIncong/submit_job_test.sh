@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=fit_recovery
+#SBATCH --job-name=test_recovery
 #SBATCH -A bornstea_lab
 #SBATCH -p standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH -c 16
-#SBATCH --array=1-1100%15  # 100 subjects * 11 coherence levels, max 15 concurrent jobs
+#SBATCH --array=1
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
 #SBATCH -t 2-00:00:00
