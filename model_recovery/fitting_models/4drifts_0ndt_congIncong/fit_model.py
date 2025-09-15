@@ -98,8 +98,10 @@ try:
     df = pd.read_csv(f'../../simulated_data/{args.subject_id}.csv') 
     # remove trials with no free choice
     df = df.dropna(subset=['freeChoice'])
+    # update variable names to match existing code
+    df.rename(columns={'RTs': 'RT', 'signal1Onset': 'signal1_onset', 'noise2Onset': 'noise2_onset', 'signal2Onset': 'signal2_onset'}, inplace=True)
     # convert RTs & changepoints to seconds
-    df[['RTs', 'signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['RTs', 'signal1_onset', 'noise2_onset', 'signal2_onset']] / 60
+    df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] / 60
     # change any unobserved changepoints to 0
     df[['signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['signal1_onset', 'noise2_onset', 'signal2_onset']].fillna(0)
     # convert congruent to a string
@@ -112,7 +114,7 @@ try:
     
     # Create sample
     sample = pyddm.Sample.from_pandas_dataframe(
-        df, rt_column_name='RTs', choice_column_name='freeChoice'
+        df, rt_column_name='RT', choice_column_name='freeChoice'
     )
     
     # initialize model
