@@ -99,7 +99,7 @@ try:
     # remove trials with no free choice
     df = df.dropna(subset=['freeChoice'])
     # update variable names to match existing code
-    df.rename(columns={'RTs': 'RT', 'signal1Onset': 'signal1_onset', 'noise2Onset': 'noise2_onset', 'signal2Onset': 'signal2_onset'}, inplace=True)
+    df.rename(columns={'RTs': 'RT', 'signal1Onsets': 'signal1_onset', 'noise2Onsets': 'noise2_onset', 'signal2Onsets': 'signal2_onset'}, inplace=True)
     # convert RTs & changepoints to seconds
     df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] / 60
     # change any unobserved changepoints to 0
