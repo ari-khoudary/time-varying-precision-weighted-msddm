@@ -122,7 +122,7 @@ try:
         drift = drift,
         starting_position = 0,
         bound="B",
-        T_dur = 4.2,
+        T_dur = 4.3,
         nondecision=0,
         parameters={'B': (0.5, 35), 
                     'n1_weak': (0, 20), 'n1_strong': (0,20), 'n1_neut': (0,20),
