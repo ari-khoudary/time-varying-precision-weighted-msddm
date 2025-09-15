@@ -29,7 +29,7 @@ COHERENCE_INDEX=$(((SLURM_ARRAY_TASK_ID - 1) % NUM_COHERENCES))
 COHERENCE=${COHERENCE_LEVELS[$COHERENCE_INDEX]}
 
 # Get the subject ID 
-SUBJECT="subject_${SUBJECT_INDEX}"
+SUBJECT="sub${SUBJECT_INDEX}"
 
 # Skip if no subject found
 if [ -z "$SUBJECT" ]; then

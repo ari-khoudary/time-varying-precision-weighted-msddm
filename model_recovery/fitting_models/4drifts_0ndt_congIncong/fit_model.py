@@ -95,7 +95,7 @@ def drift(t, congruent, cue, signal1_onset, noise2_onset, signal2_onset,
 
 try:
     # Load and filter data
-    df = pd.read_csv(f'../../simulated_data/sub{args.subject_id}.csv') 
+    df = pd.read_csv(f'../../simulated_data/{args.subject_id}.csv') 
     # remove trials with no free choice
     df = df.dropna(subset=['freeChoice'])
     # convert RTs & changepoints to seconds
@@ -108,7 +108,7 @@ try:
                                else 'congruent'), axis=1)
 
     # write out tidied data for sanity checking
-    df.to_csv(f'../../simulated_data/sub{args.subject_id}_tidy.csv', index=False)
+    df.to_csv(f'../../simulated_data/{args.subject_id}_tidy.csv', index=False)
     
     # Create sample
     sample = pyddm.Sample.from_pandas_dataframe(
