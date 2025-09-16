@@ -5,20 +5,23 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH -c 16
-#SBATCH --array=1-1100%15  # 100 subjects * 11 coherence levels, max 15 concurrent jobs
+#SBATCH --array=1-7  # 1-N, where N = nSubs * nCoherences
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
-#SBATCH -t 2-00:00:00
+#SBATCH -t 4-00:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=makhouda@uci.edu
 
-mkdir -p slurm_messages
 
+# print job start time
+echo "Job started at: $(date)"
+# setup
+mkdir -p slurm_messages
 source ~/.bashrc
 module load python/3.10.2
 
-# Define coherence levels from the simulation
-COHERENCE_LEVELS=(0.505 0.515 0.519 0.52 0.52 0.53 0.53 0.54 0.56 0.61 0.651)
+# Define coherence levels in the simulated data
+COHERENCE_LEVELS=(0.61 0.56 0.54 0.53 0.52 0.515 0.505)
 NUM_COHERENCES=${#COHERENCE_LEVELS[@]}
 
 # Calculate subject index and coherence index from SLURM_ARRAY_TASK_ID
@@ -37,10 +40,12 @@ if [ -z "$SUBJECT" ]; then
     exit 0
 fi
 
-echo "Processing Subject: $SUBJECT, Coherence: $COHERENCE"
+echo "Processing $SUBJECT, Coherence: $COHERENCE"
 echo "Task ID: $SLURM_ARRAY_TASK_ID, Subject Index: $SUBJECT_INDEX, Coherence Index: $COHERENCE_INDEX"
 
 # Run the fitting code with subject and coherence parameters
 python -u fit_model.py ${SUBJECT} --coherence ${COHERENCE}
 
+# timestamp completion
 echo "Completed Subject: $SUBJECT, Coherence: $COHERENCE"
+echo "Job ended at: $(date)"
