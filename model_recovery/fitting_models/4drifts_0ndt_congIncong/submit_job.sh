@@ -8,7 +8,7 @@
 #SBATCH --array=1-7  # 1-N, where N = nSubs * nCoherences
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
-#SBATCH -t 4-00:00:00
+#SBATCH -t 1-12:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=makhouda@uci.edu
 
@@ -32,7 +32,7 @@ COHERENCE_INDEX=$(((SLURM_ARRAY_TASK_ID - 1) % NUM_COHERENCES))
 COHERENCE=${COHERENCE_LEVELS[$COHERENCE_INDEX]}
 
 # Get the subject ID 
-SUBJECT="subject_${SUBJECT_INDEX}"
+SUBJECT="sub${SUBJECT_INDEX}"
 
 # Skip if no subject found
 if [ -z "$SUBJECT" ]; then
