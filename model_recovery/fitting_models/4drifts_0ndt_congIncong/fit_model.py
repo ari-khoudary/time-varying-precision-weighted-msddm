@@ -94,23 +94,32 @@ def drift(t, congruent, cue, signal1_onset, noise2_onset, signal2_onset,
             return s2_neut
 
 try:
-    # Load and filter data
-    df = pd.read_csv(f'../../simulated_data/{args.subject_id}.csv') 
-    # remove trials with no free choice
-    df = df.dropna(subset=['freeChoice'])
-    # update variable names to match existing code
-    df.rename(columns={'RTs': 'RT', 'signal1Onsets': 'signal1_onset', 'noise2Onsets': 'noise2_onset', 'signal2Onsets': 'signal2_onset'}, inplace=True)
-    # convert RTs & changepoints to seconds
-    df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] / 60
-    # change any unobserved changepoints to 0
-    df[['signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['signal1_onset', 'noise2_onset', 'signal2_onset']].fillna(0)
-    # convert congruent to a string
-    df['congruent'] = df.apply(lambda row: 'neutral' if row['cue'] == 0.5 
-                          else ('incongruent' if row['congruent'] == 0 
-                               else 'congruent'), axis=1)
-
-    # write out tidied data for sanity checking
-    df.to_csv(f'../../simulated_data/{args.subject_id}_tidy.csv', index=False)
+    # Check if tidy version of dataframe already exists
+    tidy_file_path = f'../../simulated_data/{subject_id}_tidy.csv'
+    
+    if os.path.exists(tidy_file_path):
+        # Load the existing tidy dataframe
+        df = pd.read_csv(tidy_file_path)
+    else:
+        # Load and tidy the raw data
+        df = pd.read_csv(f'../../simulated_data/{subject_id}.csv') 
+        # remove trials with no free choice
+        df = df.dropna(subset=['freeChoice'])
+        # update variable names to match existing code
+        df.rename(columns={'RTs': 'RT', 'signal1Onsets': 'signal1_onset', 'noise2Onsets': 'noise2_onset', 'signal2Onsets': 'signal2_onset'}, inplace=True)
+        # convert RTs & changepoints to seconds
+        df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] / 60
+        # change any unobserved changepoints to 0
+        df[['signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['signal1_onset', 'noise2_onset', 'signal2_onset']].fillna(0)
+        # convert congruent to a string
+        df['congruent'] = df.apply(lambda row: 'neutral' if row['cue'] == 0.5 
+                              else ('incongruent' if row['congruent'] == 0 
+                                   else 'congruent'), axis=1)
+        # save tidied data
+        df.to_csv(tidy_file_path, index=False)
+    
+    # filter to trials with specified coherence
+    df = df[df['coherence'] == coherence]
     
     # Create sample
     sample = pyddm.Sample.from_pandas_dataframe(
@@ -124,16 +133,16 @@ try:
         bound="B",
         T_dur = 4.3,
         nondecision=0,
-        parameters={'B': (0.5, 35), 
-                    'n1_weak': (0, 20), 'n1_strong': (0,20), 'n1_neut': (0,20),
-                    's1_cong_weak': (0, 20), 's1_cong_strong': (0, 20), 's1_incong_weak': (0, 20), 's1_incong_strong': (0, 20), 's1_neut': (0, 20),
-                    'n2_cong_weak': (0, 20), 'n2_cong_strong': (0,20), 'n2_incong_weak': (0,20), 'n2_incong_strong': (0,20), 'n2_neut': (0,20),
-                    's2_cong_weak': (0, 20), 's2_cong_strong': (0, 20), 's2_incong_weak': (0, 20), 's2_incong_strong': (0, 20), 's2_neut': (0,20)},
+        parameters={'B': (1, 15), 
+                    'n1_weak': (0, 10), 'n1_strong': (0,10), 'n1_neut': (0,10),
+                    's1_cong_weak': (0, 10), 's1_cong_strong': (0, 10), 's1_incong_weak': (0, 10), 's1_incong_strong': (0, 10), 's1_neut': (0, 10),
+                    'n2_cong_weak': (0, 10), 'n2_cong_strong': (0,10), 'n2_incong_weak': (0,10), 'n2_incong_strong': (0,10), 'n2_neut': (0,10),
+                    's2_cong_weak': (0, 10), 's2_cong_strong': (0, 10), 's2_incong_weak': (0, 10), 's2_incong_strong': (0, 10), 's2_neut': (0,10)},
         conditions = ['congruent', 'cue', 'signal1_onset', 'noise2_onset', 'signal2_onset']
     )
 
     # fit
-    model.fit(sample, verbose=True)
+    model.fit(sample, verbose=False)
     
     # Gather results
     loss = model.get_fit_result().value()
