@@ -115,8 +115,8 @@ try:
             T_dur = 4.3,
             nondecision=0,
             parameters={'B': (1, 15), 
-                        'n1': (0, 10), 's1': (0, 10), 
-                        'n2': (0, 10), 's2': (0, 10)},
+                        'n1_neut': (0, 10), 's1_neut': (0, 10), 
+                        'n2_neut': (0, 10), 's2_neut': (0, 10)},
             conditions = ['congruent', 'signal1_onset', 'noise2_onset', 'signal2_onset']
         )
     else:  # biased cues
