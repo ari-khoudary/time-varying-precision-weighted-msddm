@@ -25,7 +25,7 @@ coherence = args.coherence
 cue = args.cue
 
 # Create results directory if it doesn't exist
-results_dir = f'results/{coherence}coh'
+results_dir = f'results/{subject_id}'
 os.makedirs(results_dir, exist_ok=True)
 
 # define one drift function for neutral and one for biased cues
@@ -142,13 +142,13 @@ try:
     params = model.parameters()
     
     # Save text results (basic summary)
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_{cue}cue_results.txt'), 'w') as f:
+    with open(os.path.join(results_dir, f'{coherence}coh_{cue}cue_results.txt'), 'w') as f:
         f.write(f'Subject: {subject_id}\nCoherence: {coherence}\nCue: {cue}\nLoss: {loss}\nParameters:\n')
         for param, value in params.items():
             f.write(f'{param}: {value}\n')
     original_stdout = sys.stdout
     
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_{cue}cue_summary.txt'), "w") as f:
+    with open(os.path.join(results_dir, f'{coherence}coh_{cue}cue_summary.txt'), "w") as f:
         sys.stdout = f
         print(f'Subject: {subject_id}, Coherence: {coherence}, Cue: {cue}')
         model.show()
@@ -156,6 +156,6 @@ try:
     
 except Exception as e:
     error_msg = f"Error processing subject {subject_id}: {str(e)}"
-    # Save error information
-    with open(os.path.join(results_dir, f's{subject_id}_error.txt'), 'w') as f:
+    # Save error information with cue and coherence in filename
+    with open(os.path.join(results_dir, f'{coherence}coh_{cue}cue_error.txt'), 'w') as f:
         f.write(error_msg)

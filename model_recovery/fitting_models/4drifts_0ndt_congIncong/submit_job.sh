@@ -47,6 +47,10 @@ echo "Task ID: $SLURM_ARRAY_TASK_ID, Subject Index: $SUBJECT_INDEX, Combination 
 # Run the fitting code with subject and coherence parameters
 python -u fit_model.py ${SUBJECT} --coherence ${COHERENCE} --cue ${CUE}
 
+# Move SLURM files to subject directory after job completes
+mv "slurm_messages/slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out" "${SUBJECT_RESULTS_DIR}/${COHERENCE}coh_${CUE}cue_slurm.out" 2>/dev/null || true
+mv "slurm_messages/slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.err" "${SUBJECT_RESULTS_DIR}/${COHERENCE}coh_${CUE}cue_slurm.err" 2>/dev/null || true
+
 # timestamp completion
 echo "Completed Subject: $SUBJECT, Coherence: $COHERENCE, Cue: $CUE"
 echo "Job ended at: $(date)"
