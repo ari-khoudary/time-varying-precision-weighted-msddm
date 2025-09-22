@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH -c 16
-#SBATCH --array=1-18
+#SBATCH --array=1-18 # 1-N where N = nSubs * nCoherence * nCue
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
 #SBATCH -t 2-00:00:00
