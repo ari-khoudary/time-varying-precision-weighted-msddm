@@ -17,81 +17,60 @@ pyddm.set_N_cpus(n_cpus)
 parser = argparse.ArgumentParser()
 parser.add_argument('subject_id')
 parser.add_argument('--coherence', type=float, required=True)
+parser.add_argument('--cue', type=float, required=True)
 args = parser.parse_args()
 
 subject_id = args.subject_id
 coherence = args.coherence
+cue = args.cue
 
 # Create results directory if it doesn't exist
 results_dir = f'results/{coherence}coh'
 os.makedirs(results_dir, exist_ok=True)
 
-# define drift function
-def drift(t, congruent, cue, signal1_onset, noise2_onset, signal2_onset,
-                n1_weak, n1_strong, n1_neut, 
-                s1_cong_weak, s1_cong_strong, s1_incong_weak, s1_incong_strong, s1_neut,
-                n2_cong_weak, n2_cong_strong, n2_incong_weak, n2_incong_strong, n2_neut, 
-                s2_cong_weak, s2_cong_strong, s2_incong_weak, s2_incong_strong, s2_neut):
-    
+# define one drift function for neutral and one for biased cues
+def drift_neutral(t, congruent, signal1_onset, noise2_onset, signal2_onset,
+                  n1_neut, s1_neut, n2_neut, s2_neut):
+    """Drift function for neutral cue (0.5)"""
+    if t < signal1_onset:
+        return n1_neut
+    elif t >= signal1_onset and t < noise2_onset:
+        return s1_neut
+    elif t >= noise2_onset and t < signal2_onset:
+        return n2_neut
+    elif t >= signal2_onset:
+        return s2_neut
+
+def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
+                 n1_cong, n1_incong, s1_cong, s1_incong, 
+                 n2_cong, n2_incong, s2_cong, s2_incong):
     # drift rate during first noise period
     if t < signal1_onset:
         if congruent == 'congruent': 
-            if cue == 0.65:
-                return n1_weak
-            else:
-                return n1_strong
-        elif congruent == 'incongruent':
-            if cue == 0.65:
-                return -n1_weak
-            else:
-                return -n1_strong
-        else:
-            return n1_neut
+            return n1_cong
+        else:  # incongruent
+            return -n1_incong
 
     # drift rates during first signal period
-    if t >= signal1_onset and t < noise2_onset:
+    elif t >= signal1_onset and t < noise2_onset:
         if congruent == 'congruent':
-            if cue == 0.65:
-                return s1_cong_weak
-            else:
-                return s1_cong_strong
-        elif congruent == 'incongruent':
-            if cue == 0.65:
-                return -s1_incong_weak
-            else:
-                return -s1_incong_strong
-        else:
-            return s1_neut
+            return s1_cong
+        else:  # incongruent
+            return -s1_incong
 
     # drift rates during the second noise period
-    if t >= noise2_onset and t < signal2_onset:
+    elif t >= noise2_onset and t < signal2_onset:
         if congruent == 'congruent':
-            if cue == 0.65:
-                return n2_cong_weak
-            else:
-                return n2_cong_strong
-        elif congruent == 'incongruent':
-            if cue == 0.65:
-                return -n2_incong_weak
-            else:
-                return -n2_incong_strong
-        else:
-            return n2_neut
+            return n2_cong
+        else:  # incongruent
+            return -n2_incong
 
     # drift rates during the second signal period
-    if t >= signal2_onset:
+    elif t >= signal2_onset:
         if congruent == 'congruent':
-            if cue == 0.65:
-                return s2_cong_weak
-            else:
-                return s2_cong_strong
-        elif congruent == 'incongruent':
-            if cue == 0.65:
-                return -s2_incong_weak
-            else:
-                return -s2_incong_strong
-        else:
-            return s2_neut
+            return s2_cong
+        else:  # incongruent
+            return -s2_incong
 
 try:
     # Check if tidy version of dataframe already exists
@@ -119,44 +98,59 @@ try:
         df.to_csv(tidy_file_path, index=False)
     
     # filter to trials with specified coherence
-    df = df[df['coherence'] == coherence]
+    df['coherence'] = df['coherence'].round(2)
+    df = df[(df['coherence'] == coherence) & (df['cue'] == cue)]
     
     # Create sample
     sample = pyddm.Sample.from_pandas_dataframe(
         df, rt_column_name='RT', choice_column_name='freeChoice'
     )
     
-    # initialize model
-    model = pyddm.gddm(
-        drift = drift,
-        starting_position = 0,
-        bound="B",
-        T_dur = 4.3,
-        nondecision=0,
-        parameters={'B': (1, 15), 
-                    'n1_weak': (0, 10), 'n1_strong': (0,10), 'n1_neut': (0,10),
-                    's1_cong_weak': (0, 10), 's1_cong_strong': (0, 10), 's1_incong_weak': (0, 10), 's1_incong_strong': (0, 10), 's1_neut': (0, 10),
-                    'n2_cong_weak': (0, 10), 'n2_cong_strong': (0,10), 'n2_incong_weak': (0,10), 'n2_incong_strong': (0,10), 'n2_neut': (0,10),
-                    's2_cong_weak': (0, 10), 's2_cong_strong': (0, 10), 's2_incong_weak': (0, 10), 's2_incong_strong': (0, 10), 's2_neut': (0,10)},
-        conditions = ['congruent', 'cue', 'signal1_onset', 'noise2_onset', 'signal2_onset']
-    )
+   # initialize model with parameters depending on cue level
+    if cue == 0.5: 
+        model = pyddm.gddm(
+            drift = drift_neutral,
+            starting_position = 0,
+            bound="B",
+            T_dur = 4.3,
+            nondecision=0,
+            parameters={'B': (1, 15), 
+                        'n1': (0, 10), 's1': (0, 10), 
+                        'n2': (0, 10), 's2': (0, 10)},
+            conditions = ['congruent', 'signal1_onset', 'noise2_onset', 'signal2_onset']
+        )
+    else:  # biased cues
+        model = pyddm.gddm(
+            drift = drift_biased,
+            starting_position = 0,
+            bound="B",
+            T_dur = 4.3,
+            nondecision=0,
+            parameters={'B': (1, 15), 
+                        'n1_cong': (0, 10), 'n1_incong': (0, 10),
+                        's1_cong': (0, 10), 's1_incong': (0, 10),
+                        'n2_cong': (0, 10), 'n2_incong': (0, 10),
+                        's2_cong': (0, 10), 's2_incong': (0, 10)},
+            conditions = ['congruent', 'signal1_onset', 'noise2_onset', 'signal2_onset']
+        )
 
     # fit
-    model.fit(sample, verbose=False)
+    model.fit(sample, verbose=True)
     
     # Gather results
     loss = model.get_fit_result().value()
     params = model.parameters()
     
     # Save text results (basic summary)
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_results.txt'), 'w') as f:
-        f.write(f'Subject: {subject_id}\n Coherence: {coherence}\n Loss: {loss}\nParameters:\n')
+    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_{cue}cue_results.txt'), 'w') as f:
+        f.write(f'Subject: {subject_id}\nCoherence: {coherence}\nCue: {cue}\nLoss: {loss}\nParameters:\n')
         for param, value in params.items():
             f.write(f'{param}: {value}\n')
-
     original_stdout = sys.stdout
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_summary.txt'), "w") as f:
+    
+    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_{cue}cue_summary.txt'), "w") as f:
         sys.stdout = f
+        print(f'Subject: {subject_id}, Coherence: {coherence}, Cue: {cue}')
         model.show()
     sys.stdout = original_stdout
     

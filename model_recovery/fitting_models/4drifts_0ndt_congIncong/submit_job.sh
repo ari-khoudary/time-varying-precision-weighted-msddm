@@ -1,37 +1,43 @@
 #!/bin/bash
-#SBATCH --job-name=fit_recovery
+#SBATCH --job-name=test_recovery
 #SBATCH -A bornstea_lab
 #SBATCH -p standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH -c 16
-#SBATCH --array=1-7  # 1-N, where N = nSubs * nCoherences
+#SBATCH --array=1-18 # 1-N where N = nSubs * nCoherence * nCue
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
-#SBATCH -t 1-12:00:00
+#SBATCH -t 2-00:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=makhouda@uci.edu
 
-
-# print job start time
 echo "Job started at: $(date)"
-# setup
 mkdir -p slurm_messages
 source ~/.bashrc
 module load python/3.10.2
 
-# Define coherence levels in the simulated data
-COHERENCE_LEVELS=(0.61 0.56 0.54 0.53 0.52 0.515 0.505)
+# Define coherence levels from the simulation
+COHERENCE_LEVELS=(0.51 0.52 0.53 0.54 0.56 0.61)
+CUE_LEVELS=(0.5 0.65 0.8)
 NUM_COHERENCES=${#COHERENCE_LEVELS[@]}
+NUM_CUES=${#CUE_LEVELS[@]}
 
 # Calculate subject index and coherence index from SLURM_ARRAY_TASK_ID
-SUBJECT_INDEX=$(((SLURM_ARRAY_TASK_ID - 1) / NUM_COHERENCES + 1))
-COHERENCE_INDEX=$(((SLURM_ARRAY_TASK_ID - 1) % NUM_COHERENCES))
+TOTAL_COMBINATIONS=$((NUM_COHERENCES * NUM_CUES))
+SUBJECT_INDEX=$(((SLURM_ARRAY_TASK_ID - 1) / TOTAL_COMBINATIONS + 1))
+COMBINATION_INDEX=$(((SLURM_ARRAY_TASK_ID - 1) % TOTAL_COMBINATIONS))
+COHERENCE_INDEX=$((COMBINATION_INDEX / NUM_CUES))
+CUE_INDEX=$((COMBINATION_INDEX % NUM_CUES))
 
-# Get the specific coherence value
+# Get the specific coherence and cue values, as well as subID
 COHERENCE=${COHERENCE_LEVELS[$COHERENCE_INDEX]}
+<<<<<<< HEAD
 
 # Get the subject ID 
+=======
+CUE=${CUE_LEVELS[$CUE_INDEX]}
+>>>>>>> cf551b5e93bbce76bcaf2d2d66e061a1f9f3c73e
 SUBJECT="sub${SUBJECT_INDEX}"
 
 # Skip if no subject found
@@ -40,12 +46,17 @@ if [ -z "$SUBJECT" ]; then
     exit 0
 fi
 
-echo "Processing $SUBJECT, Coherence: $COHERENCE"
-echo "Task ID: $SLURM_ARRAY_TASK_ID, Subject Index: $SUBJECT_INDEX, Coherence Index: $COHERENCE_INDEX"
+echo "Processing Subject: $SUBJECT, Coherence: $COHERENCE, Cue: $CUE"
+echo "Task ID: $SLURM_ARRAY_TASK_ID, Subject Index: $SUBJECT_INDEX, Combination Index: $COMBINATION_INDEX"
 
 # Run the fitting code with subject and coherence parameters
-python -u fit_model.py ${SUBJECT} --coherence ${COHERENCE}
+python -u fit_model.py ${SUBJECT} --coherence ${COHERENCE} --cue ${CUE}
 
 # timestamp completion
+<<<<<<< HEAD
 echo "Completed Subject: $SUBJECT, Coherence: $COHERENCE"
 echo "Job ended at: $(date)"
+=======
+echo "Completed Subject: $SUBJECT, Coherence: $COHERENCE, Cue: $CUE"
+echo "Job ended at: $(date)"
+>>>>>>> cf551b5e93bbce76bcaf2d2d66e061a1f9f3c73e
