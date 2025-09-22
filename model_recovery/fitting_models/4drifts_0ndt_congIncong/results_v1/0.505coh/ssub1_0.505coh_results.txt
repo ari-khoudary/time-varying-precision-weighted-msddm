@@ -1,0 +1,9 @@
+Subject: sub1
+ Coherence: 0.505
+ Loss: 56.39438103579402
+Parameters:
+drift: {'n1_weak': Fitted(5.63622746308503, minval=0, maxval=10), 'n1_strong': Fitted(4.327681519007782, minval=0, maxval=10), 'n1_neut': Fitted(0.4239152310161378, minval=0, maxval=10), 's1_cong_weak': Fitted(0.0, minval=0, maxval=10), 's1_cong_strong': Fitted(4.221847659789273, minval=0, maxval=10), 's1_incong_weak': Fitted(2.502330635772126, minval=0, maxval=10), 's1_incong_strong': Fitted(1.8700580800279265, minval=0, maxval=10), 's1_neut': Fitted(6.36085126115376, minval=0, maxval=10), 'n2_cong_weak': Fitted(1.7380978894273817, minval=0, maxval=10), 'n2_cong_strong': Fitted(2.186951780849869, minval=0, maxval=10), 'n2_incong_weak': Fitted(6.844748028571056, minval=0, maxval=10), 'n2_incong_strong': Fitted(3.972000299696028, minval=0, maxval=10), 'n2_neut': Fitted(4.84207892541375, minval=0, maxval=10), 's2_cong_weak': Fitted(6.055791506171087, minval=0, maxval=10), 's2_cong_strong': Fitted(5.028252750245691, minval=0, maxval=10), 's2_incong_weak': Fitted(2.192994903594842, minval=0, maxval=10), 's2_incong_strong': Fitted(4.806836330100915, minval=0, maxval=10), 's2_neut': Fitted(5.266687290524921, minval=0, maxval=10)}
+noise: {'noise': 1}
+bound: {'B': Fitted(14.768242380115398, minval=1, maxval=15)}
+IC: {'x0': 0}
+overlay: {'nondectime': 0, 'umixturecoef': 0.02}
