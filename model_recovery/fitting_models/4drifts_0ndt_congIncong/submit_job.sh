@@ -32,12 +32,7 @@ CUE_INDEX=$((COMBINATION_INDEX % NUM_CUES))
 
 # Get the specific coherence and cue values, as well as subID
 COHERENCE=${COHERENCE_LEVELS[$COHERENCE_INDEX]}
-<<<<<<< HEAD
-
-# Get the subject ID 
-=======
 CUE=${CUE_LEVELS[$CUE_INDEX]}
->>>>>>> cf551b5e93bbce76bcaf2d2d66e061a1f9f3c73e
 SUBJECT="sub${SUBJECT_INDEX}"
 
 # Skip if no subject found
@@ -53,10 +48,5 @@ echo "Task ID: $SLURM_ARRAY_TASK_ID, Subject Index: $SUBJECT_INDEX, Combination 
 python -u fit_model.py ${SUBJECT} --coherence ${COHERENCE} --cue ${CUE}
 
 # timestamp completion
-<<<<<<< HEAD
-echo "Completed Subject: $SUBJECT, Coherence: $COHERENCE"
-echo "Job ended at: $(date)"
-=======
 echo "Completed Subject: $SUBJECT, Coherence: $COHERENCE, Cue: $CUE"
 echo "Job ended at: $(date)"
->>>>>>> cf551b5e93bbce76bcaf2d2d66e061a1f9f3c73e
