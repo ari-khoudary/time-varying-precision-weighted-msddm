@@ -77,6 +77,7 @@ try:
     # Load and prepare data
     df = pd.read_csv('inference_test.csv')
     df = df.dropna(subset=['RT'])
+    df = df.rename(columns={'trueCongruence': 'congruent'})
     df[['signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['signal1_onset', 'noise2_onset', 'signal2_onset']].fillna(0)
     
     # Filter for specific subject and cue
