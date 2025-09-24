@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=3subs
+#SBATCH --job-name=neutralPatch
 #SBATCH -A bornstea_lab
 #SBATCH -p standard
 #SBATCH --nodes=1
