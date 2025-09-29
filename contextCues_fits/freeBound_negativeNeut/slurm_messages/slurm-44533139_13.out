@@ -1,0 +1,41 @@
+Fitting model for subject 46, cue 0.5
+Found 76 trials for subject 46, cue 0.5
+Starting model fitting...
+differential_evolution step 1: f(x)= 236.904
+differential_evolution step 2: f(x)= 231.628
+differential_evolution step 3: f(x)= 231.628
+differential_evolution step 4: f(x)= 222.676
+differential_evolution step 5: f(x)= 222.676
+differential_evolution step 6: f(x)= 222.676
+differential_evolution step 7: f(x)= 222.676
+differential_evolution step 8: f(x)= 222.676
+differential_evolution step 9: f(x)= 222.668
+differential_evolution step 10: f(x)= 221.714
+differential_evolution step 11: f(x)= 221.714
+differential_evolution step 12: f(x)= 221.714
+differential_evolution step 13: f(x)= 220.928
+differential_evolution step 14: f(x)= 208.183
+differential_evolution step 15: f(x)= 202.155
+differential_evolution step 16: f(x)= 182.171
+differential_evolution step 17: f(x)= 182.171
+differential_evolution step 18: f(x)= 182.171
+differential_evolution step 19: f(x)= 161.586
+differential_evolution step 20: f(x)= 161.586
+differential_evolution step 21: f(x)= 161.586
+differential_evolution step 22: f(x)= 161.586
+differential_evolution step 23: f(x)= 161.586
+differential_evolution step 24: f(x)= 161.586
+differential_evolution step 25: f(x)= 159.082
+differential_evolution step 26: f(x)= 156.028
+differential_evolution step 27: f(x)= 156.028
+differential_evolution step 28: f(x)= 155.34
+differential_evolution step 29: f(x)= 155.34
+differential_evolution step 30: f(x)= 155.34
+differential_evolution step 31: f(x)= 155.34
+differential_evolution step 32: f(x)= 155.34
+differential_evolution step 33: f(x)= 155.34
+differential_evolution step 34: f(x)= 155.34
+differential_evolution step 35: f(x)= 155.327
+differential_evolution step 36: f(x)= 155.169
+Successfully fitted model for subject 46, cue 0.5
+Loss: 155.1110

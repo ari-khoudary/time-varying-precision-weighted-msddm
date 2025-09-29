@@ -1,0 +1,10 @@
+Subject: 42
+Cue: 0.5
+Trials: 71
+Loss: 54.715018811417366
+Parameters:
+drift: {'n1_neut': Fitted(2.8917557892118833, minval=-10, maxval=10), 's1_neut': Fitted(4.434935677619281, minval=-10, maxval=10), 'n2_neut': Fitted(-1.3065288457611137, minval=-10, maxval=10), 's2_neut': Fitted(5.21101580551274, minval=-10, maxval=10)}
+noise: {'noise': 1}
+bound: {'B': Fitted(8.274076000695851, minval=1, maxval=15)}
+IC: {'x0': 0}
+overlay: {'nondectime': 0, 'umixturecoef': 0.02}

@@ -1,0 +1,41 @@
+Subject: 47, Cue: 0.5, Trials: 76
+Model information:
+Choices: 'correct' (upper boundary), 'error' (lower boundary)
+Drift component DriftEasy:
+    easy_drift
+    Fitted parameters:
+    - n1_neut: 0.567705
+    - s1_neut: 3.030538
+    - n2_neut: 1.563165
+    - s2_neut: 5.864993
+Noise component NoiseConstant:
+    constant
+    Fixed parameters:
+    - noise: 1.000000
+Bound component BoundConstant:
+    constant
+    Fitted parameters:
+    - B: 4.750187
+IC component ICPointRatio:
+    An arbitrary starting point expressed as a proportion of the distance between the bounds.
+    Fixed parameters:
+    - x0: 0.000000
+Overlay component OverlayChain:
+    Overlay component OverlayNonDecision:
+        Add a non-decision by shifting the histogram
+        Fixed parameters:
+        - nondectime: 0.000000
+    Overlay component OverlayUniformMixture:
+        Uniform distribution mixture model
+        Fixed parameters:
+        - umixturecoef: 0.020000
+Fit information:
+    Loss function: Negative log likelihood
+    Loss function value: 38.590448933995994
+    Fitting method: differential_evolution
+    Solver: auto
+    Other properties:
+        - nparams: 5
+        - samplesize: 76
+        - mess: ''
+

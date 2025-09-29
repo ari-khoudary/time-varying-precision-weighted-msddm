@@ -1,0 +1,26 @@
+Fitting model for subject 64, cue 0.5
+Found 76 trials for subject 64, cue 0.5
+Starting model fitting...
+differential_evolution step 1: f(x)= 168.485
+differential_evolution step 2: f(x)= 134.519
+differential_evolution step 3: f(x)= 134.519
+differential_evolution step 4: f(x)= 126.691
+differential_evolution step 5: f(x)= 126.691
+differential_evolution step 6: f(x)= 126.691
+differential_evolution step 7: f(x)= 123.453
+differential_evolution step 8: f(x)= 122.125
+differential_evolution step 9: f(x)= 122.125
+differential_evolution step 10: f(x)= 122.125
+differential_evolution step 11: f(x)= 122.125
+differential_evolution step 12: f(x)= 122.125
+differential_evolution step 13: f(x)= 122.125
+differential_evolution step 14: f(x)= 122.072
+differential_evolution step 15: f(x)= 121.504
+differential_evolution step 16: f(x)= 121.207
+differential_evolution step 17: f(x)= 121.207
+differential_evolution step 18: f(x)= 121.207
+differential_evolution step 19: f(x)= 121.143
+differential_evolution step 20: f(x)= 121.105
+differential_evolution step 21: f(x)= 120.942
+Successfully fitted model for subject 64, cue 0.5
+Loss: 120.9255
