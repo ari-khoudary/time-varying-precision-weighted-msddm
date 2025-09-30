@@ -25,7 +25,7 @@ coherence = args.coherence
 cue = args.cue
 
 # Create results directory if it doesn't exist
-results_dir = f'results/{cue}cue/'
+results_dir = f'results_serial/{cue}cue/'
 os.makedirs(results_dir, exist_ok=True)
 
 # define one drift function for neutral and one for biased cues
@@ -95,7 +95,7 @@ try:
                               else ('incongruent' if row['congruent'] == 0 
                                    else 'congruent'), axis=1)
         # filter to include only memoryThinning values in the (broad) theta range
-       	df = df[df['memoryThinning'] < 25]
+        df = df[df['memoryThinning'] < 25]
         # save tidied data
         df.to_csv(tidy_file_path, index=False)
     
@@ -144,14 +144,14 @@ try:
     
     # Save text results (basic summary)
     with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_results.txt'), 'w') as f:
-        f.write(f'Subject: {subject_id}\nCoherence: {coherence}\nCue: {cue}\nLoss: {loss}\nParameters:\n')
+        f.write(f'Serial model \n\n Subject: {subject_id}\nCoherence: {coherence}\nCue: {cue}\nLoss: {loss}\nParameters:\n')
         for param, value in params.items():
             f.write(f'{param}: {value}\n')
     original_stdout = sys.stdout
     
     with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_summary.txt'), "w") as f:
         sys.stdout = f
-        print(f'Subject: {subject_id}, Coherence: {coherence}, Cue: {cue}')
+        print(f'Serial model \n\n Subject: {subject_id}, Coherence: {coherence}, Cue: {cue}')
         model.show()
     sys.stdout = original_stdout
     
