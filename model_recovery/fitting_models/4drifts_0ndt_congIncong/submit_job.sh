@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=3subs
+#SBATCH --job-name=5subs
 #SBATCH -A bornstea_lab
 #SBATCH -p standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH -c 16
+#SBATCH -c 8
 #SBATCH --array=1-54 # 1-N where N = nSubs * nCoherence * nCue
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
@@ -18,7 +18,7 @@ source ~/.bashrc
 module load python/3.10.2
 
 # Define coherence levels from the simulation
-COHERENCE_LEVELS=(0.51 0.52 0.53 0.54 0.56 0.61)
+COHERENCE_LEVELS=(0.515 0.52 0.53 0.54 0.56 0.61)
 CUE_LEVELS=(0.5 0.65 0.8)
 NUM_COHERENCES=${#COHERENCE_LEVELS[@]}
 NUM_CUES=${#CUE_LEVELS[@]}
