@@ -128,7 +128,7 @@ try:
             T_dur = 4.3,
             nondecision=0,
             parameters={'B': (1, 15), 
-                        'n1_biased': (0, 10), 
+                        'n1_cong': (0, 10), 'n1_incong': (0, 10),
                         's1_cong': (0, 10), 's1_incong': (0, 10),
                         'n2_cong': (0, 10), 'n2_incong': (0, 10),
                         's2_cong': (0, 10), 's2_incong': (0, 10)},

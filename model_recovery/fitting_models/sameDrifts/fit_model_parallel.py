@@ -25,7 +25,7 @@ coherence = args.coherence
 cue = args.cue
 
 # Create results directory if it doesn't exist
-results_dir = f'results_serial/{cue}cue/'
+results_dir = f'results_parallel/{cue}cue/'
 os.makedirs(results_dir, exist_ok=True)
 
 # define one drift function for neutral and one for biased cues
@@ -42,8 +42,8 @@ def drift_neutral(t, signal1_onset, noise2_onset, signal2_onset,
         return s2_neut
 
 def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
-                 n1_biased, s1_cong, s1_incong, 
-                 n2_cong, n2_incong, s2_cong, s2_incong):
+                 n1_biased, s1_biased,
+                 n2_biased, s2_biased):
     # drift rate during first noise period
     if t < signal1_onset:
         if congruent == 'congruent': 
@@ -54,34 +54,34 @@ def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
     # drift rates during first signal period
     elif t >= signal1_onset and t < noise2_onset:
         if congruent == 'congruent':
-            return s1_cong
+            return s1_biased
         else:  # incongruent
-            return -s1_incong
+            return -s1_biased
 
     # drift rates during the second noise period
     elif t >= noise2_onset and t < signal2_onset:
         if congruent == 'congruent':
-            return n2_cong
+            return n2_biased
         else:  # incongruent
-            return -n2_incong
+            return -n2_biased
 
     # drift rates during the second signal period
     elif t >= signal2_onset:
         if congruent == 'congruent':
-            return s2_cong
+            return s2_biased
         else:  # incongruent
-            return -s2_incong
+            return -s2_biased
 
 try:
     # Check if tidy version of dataframe already exists
-    tidy_file_path = f'../../simulated_data/serial_data/{subject_id}_tidy.csv'
+    tidy_file_path = f'../../simulated_data/parallel_data/{subject_id}_tidy.csv'
     
     if os.path.exists(tidy_file_path):
         # Load the existing tidy dataframe
         df = pd.read_csv(tidy_file_path)
     else:
         # Load and tidy the raw data
-        df = pd.read_csv(f'../../simulated_data/serial_data/{subject_id}.csv') 
+        df = pd.read_csv(f'../../simulated_data/parallel_data/{subject_id}.csv') 
         # remove trials with no free choice
         df = df.dropna(subset=['freeChoice'])
         # update variable names to match existing code
@@ -129,9 +129,9 @@ try:
             nondecision=0,
             parameters={'B': (1, 15), 
                         'n1_biased': (0, 10), 
-                        's1_cong': (0, 10), 's1_incong': (0, 10),
-                        'n2_cong': (0, 10), 'n2_incong': (0, 10),
-                        's2_cong': (0, 10), 's2_incong': (0, 10)},
+                        's1_biased': (0, 10), 
+                        'n2_biased': (0, 10), 
+                        's2_biased': (0, 10)},
             conditions = ['congruent', 'signal1_onset', 'noise2_onset', 'signal2_onset']
         )
 
