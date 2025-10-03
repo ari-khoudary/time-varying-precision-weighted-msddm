@@ -74,14 +74,14 @@ def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
 
 try:
     # Check if tidy version of dataframe already exists
-    tidy_file_path = f'../../simulated_data/{subject_id}_tidy.csv'
+    tidy_file_path = f'../../simulated_data/serial_data/{subject_id}_tidy.csv'
     
     if os.path.exists(tidy_file_path):
         # Load the existing tidy dataframe
         df = pd.read_csv(tidy_file_path)
     else:
         # Load and tidy the raw data
-        df = pd.read_csv(f'../../simulated_data/{subject_id}.csv') 
+        df = pd.read_csv(f'../../simulated_data/serial_data/{subject_id}.csv') 
         # remove trials with no free choice
         df = df.dropna(subset=['freeChoice'])
         # update variable names to match existing code
@@ -143,13 +143,13 @@ try:
     params = model.parameters()
     
     # Save text results (basic summary)
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_results.txt'), 'w') as f:
+    with open(os.path.join(results_dir, f'{subject_id}_{coherence}coh_results.txt'), 'w') as f:
         f.write(f'Serial model \n\n Subject: {subject_id}\nCoherence: {coherence}\nCue: {cue}\nLoss: {loss}\nParameters:\n')
         for param, value in params.items():
             f.write(f'{param}: {value}\n')
     original_stdout = sys.stdout
     
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_summary.txt'), "w") as f:
+    with open(os.path.join(results_dir, f'{subject_id}_{coherence}coh_summary.txt'), "w") as f:
         sys.stdout = f
         print(f'Serial model \n\n Subject: {subject_id}, Coherence: {coherence}, Cue: {cue}')
         model.show()
