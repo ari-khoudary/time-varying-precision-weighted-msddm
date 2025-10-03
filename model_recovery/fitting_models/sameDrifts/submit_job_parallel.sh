@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=posOnly_p
+#SBATCH --job-name=parallel+
 #SBATCH -A bornstea_lab
 #SBATCH -p standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH -c 24
+#SBATCH -c 12
 #SBATCH --array=1-90 # 1-N where N = nSubs(5) * nCoherence (6) * nCue (3)
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
