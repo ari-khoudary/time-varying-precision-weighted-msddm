@@ -1,0 +1,3 @@
+Error processing subject sub3: Please specify valid conditions for this simulation.
+Specified: []
+Expected: ['congruent', 'noise2_onset', 'signal1_onset', 'signal2_onset']
