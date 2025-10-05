@@ -1,0 +1,10 @@
+Subject: sub3
+Coherence: 0.515
+Cue: 0.5
+Loss: 326.58660678532385
+Parameters:
+drift: {'n1_neut': Fitted(2.783345392613029, minval=0, maxval=10), 's1_neut': Fitted(3.2668258491575624, minval=0, maxval=10), 'n2_neut': Fitted(0.0, minval=0, maxval=10), 's2_neut': Fitted(3.4058777182672673, minval=0, maxval=10)}
+noise: {'noise': 1}
+bound: {'B': Fitted(7.954945685907299, minval=1, maxval=15)}
+IC: {'x0': 0}
+overlay: {'nondectime': 0, 'umixturecoef': 0.02}
