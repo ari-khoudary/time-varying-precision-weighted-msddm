@@ -1,0 +1,10 @@
+Subject: 49
+Cue: 0.8
+Trials: 300
+Loss: 549.6002757124471
+Parameters:
+drift: {'n1_biased': Fitted(-0.005737320032449425, minval=-1, maxval=10), 's1_incong': Fitted(-0.10147704961915162, minval=-1, maxval=10), 's1_cong': Fitted(0.2972474069765639, minval=-1, maxval=10), 'n2_cong': Fitted(-0.4584679060882255, minval=-1, maxval=10), 'n2_incong': Fitted(-1.0, minval=-1, maxval=10), 's2_cong': Fitted(0.8060876964452075, minval=-1, maxval=10), 's2_incong': Fitted(-1.0, minval=-1, maxval=10)}
+noise: {'noise': 1}
+bound: {'B': Fitted(1.4402877050111442, minval=1, maxval=15)}
+IC: {'x0': 0}
+overlay: {'nondectime': 0, 'umixturecoef': 0.02}
