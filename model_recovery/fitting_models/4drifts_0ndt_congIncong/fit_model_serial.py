@@ -42,14 +42,11 @@ def drift_neutral(t, signal1_onset, noise2_onset, signal2_onset,
         return s2_neut
 
 def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
-                 n1_cong, n1_incong, s1_cong, s1_incong, 
+                 n1_biased, s1_cong, s1_incong, 
                  n2_cong, n2_incong, s2_cong, s2_incong):
     # drift rate during first noise period
     if t < signal1_onset:
-        if congruent == 'congruent': 
-            return n1_cong
-        else:  # incongruent
-            return -n1_incong
+        n1_biased
 
     # drift rates during first signal period
     elif t >= signal1_onset and t < noise2_onset:
@@ -89,13 +86,13 @@ try:
         # convert RTs & changepoints to seconds
         df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] / 60
         # change any unobserved changepoints to 0
-        df[['signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['signal1_onset', 'noise2_onset', 'signal2_onset']].fillna(0)
-        # convert congruent to a string
+        for prefix in ['signal1', 'noise2', 'signal2']:
+                    df[f'{prefix}_onset'] = df[f'{prefix}Frames_obs'].fillna(0)        # convert congruent to a string
         df['congruent'] = df.apply(lambda row: 'neutral' if row['cue'] == 0.5 
                               else ('incongruent' if row['congruent'] == 0 
                                    else 'congruent'), axis=1)
         # filter to include only memoryThinning values in the (broad) theta range
-        df = df[df['memoryThinning'] < 25]
+        # df = df[df['memoryThinning'] < 25]
         # save tidied data
         df.to_csv(tidy_file_path, index=False)
     
@@ -158,5 +155,5 @@ try:
 except Exception as e:
     error_msg = f"Error processing subject {subject_id}: {str(e)}"
     # Save error information with cue and coherence in filename
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_error.txt'), 'w') as f:
+    with open(os.path.join(results_dir, f'{subject_id}_{coherence}coh_error.txt'), 'w') as f:
         f.write(error_msg)

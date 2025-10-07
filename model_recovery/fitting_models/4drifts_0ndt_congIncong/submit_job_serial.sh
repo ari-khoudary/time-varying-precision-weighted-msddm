@@ -8,7 +8,7 @@
 #SBATCH --array=1-90 # 1-N where N = nSubs(5) * nCoherence (6) * nCue (3)
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
-#SBATCH -t 2-00:00:00
+#SBATCH -t 7-00:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=makhouda@uci.edu
 

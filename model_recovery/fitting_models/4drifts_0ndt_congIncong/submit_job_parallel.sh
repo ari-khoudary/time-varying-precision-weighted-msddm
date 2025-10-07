@@ -1,14 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name=neutralPatch
+#SBATCH --job-name=parallel
 #SBATCH -A bornstea_lab
 #SBATCH -p standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH -c 16
-#SBATCH --array=1-15 # 1-N where N = nSubs * nCoherence * nCue
+#SBATCH -c 8
+#SBATCH --array=1-90 # 1-N where N = nSubs(5) * nCoherence (6) * nCue (3)
 #SBATCH --output=slurm_messages/slurm-%A_%a.out
 #SBATCH --error=slurm_messages/slurm-%A_%a.err
-#SBATCH -t 2-00:00:00
+#SBATCH -t 7-00:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=makhouda@uci.edu
 
@@ -18,8 +18,8 @@ source ~/.bashrc
 module load python/3.10.2
 
 # Define coherence levels from the simulation
-COHERENCE_LEVELS=(0.52 0.53 0.54 0.56 0.61)
-CUE_LEVELS=(0.5)
+COHERENCE_LEVELS=(0.515 0.52 0.53 0.54 0.56 0.61)
+CUE_LEVELS=(0.5 0.65 0.8)
 NUM_COHERENCES=${#COHERENCE_LEVELS[@]}
 NUM_CUES=${#CUE_LEVELS[@]}
 
@@ -45,7 +45,7 @@ echo "Processing Subject: $SUBJECT, Coherence: $COHERENCE, Cue: $CUE"
 echo "Task ID: $SLURM_ARRAY_TASK_ID, Subject Index: $SUBJECT_INDEX, Combination Index: $COMBINATION_INDEX"
 
 # Run the fitting code with subject and coherence parameters
-python -u fit_model.py ${SUBJECT} --coherence ${COHERENCE} --cue ${CUE}
+python -u fit_model_parallel.py ${SUBJECT} --coherence ${COHERENCE} --cue ${CUE}
 
 # Move SLURM files to subject directory after job completes
 mv "slurm_messages/slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out" "${SUBJECT_RESULTS_DIR}/${COHERENCE}coh_${CUE}cue_slurm.out" 2>/dev/null || true

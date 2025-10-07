@@ -42,29 +42,23 @@ def drift_neutral(t, signal1_onset, noise2_onset, signal2_onset,
         return s2_neut
 
 def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
-                 n1_cong, n1_incong, s1_cong, s1_incong, 
+                 n1_biased, s1_cong, s1_incong, 
                  n2_cong, n2_incong, s2_cong, s2_incong):
     # drift rate during first noise period
     if t < signal1_onset:
-        if congruent == 'congruent': 
-            return n1_cong
-        else:  # incongruent
-            return -n1_incong
-
+        n1_biased
     # drift rates during first signal period
     elif t >= signal1_onset and t < noise2_onset:
         if congruent == 'congruent':
             return s1_cong
         else:  # incongruent
             return -s1_incong
-
     # drift rates during the second noise period
     elif t >= noise2_onset and t < signal2_onset:
         if congruent == 'congruent':
             return n2_cong
         else:  # incongruent
             return -n2_incong
-
     # drift rates during the second signal period
     elif t >= signal2_onset:
         if congruent == 'congruent':
@@ -74,7 +68,7 @@ def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
 
 try:
     # Check if tidy version of dataframe already exists
-    tidy_file_path = f'../../simulated_data/{subject_id}_tidy.csv'
+    tidy_file_path = f'../../simulated_data/parallel_data/{subject_id}_tidy.csv'
     
     if os.path.exists(tidy_file_path):
         # Load the existing tidy dataframe
@@ -89,13 +83,14 @@ try:
         # convert RTs & changepoints to seconds
         df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['RT', 'signal1_onset', 'noise2_onset', 'signal2_onset']] / 60
         # change any unobserved changepoints to 0
-        df[['signal1_onset', 'noise2_onset', 'signal2_onset']] = df[['signal1_onset', 'noise2_onset', 'signal2_onset']].fillna(0)
-        # convert congruent to a string
+        for prefix in ['signal1', 'noise2', 'signal2']:
+            df[f'{prefix}_onset'] = df[f'{prefix}Frames_obs'].fillna(0)
+        # add congruence as a string        
         df['congruent'] = df.apply(lambda row: 'neutral' if row['cue'] == 0.5 
                               else ('incongruent' if row['congruent'] == 0 
                                    else 'congruent'), axis=1)
         # filter to include only memoryThinning values in the (broad) theta range
-       	df = df[df['memoryThinning'] < 25]
+        # df = df[df['memoryThinning'] < 25]
         # save tidied data
         df.to_csv(tidy_file_path, index=False)
     
@@ -128,7 +123,7 @@ try:
             T_dur = 4.3,
             nondecision=0,
             parameters={'B': (1, 15), 
-                        'n1_cong': (-1, 10), 'n1_incong': (-1, 10),
+                        'n1_biased': (-1, 10), 
                         's1_cong': (-1, 10), 's1_incong': (-1, 10),
                         'n2_cong': (-1, 10), 'n2_incong': (-1, 10),
                         's2_cong': (-1, 10), 's2_incong': (-1, 10)},
@@ -143,13 +138,13 @@ try:
     params = model.parameters()
     
     # Save text results (basic summary)
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_results.txt'), 'w') as f:
+    with open(os.path.join(results_dir, f'{subject_id}_{coherence}coh_results.txt'), 'w') as f:
         f.write(f'Subject: {subject_id}\nCoherence: {coherence}\nCue: {cue}\nLoss: {loss}\nParameters:\n')
         for param, value in params.items():
             f.write(f'{param}: {value}\n')
     original_stdout = sys.stdout
     
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_summary.txt'), "w") as f:
+    with open(os.path.join(results_dir, f'{subject_id}_{coherence}coh_summary.txt'), "w") as f:
         sys.stdout = f
         print(f'Subject: {subject_id}, Coherence: {coherence}, Cue: {cue}')
         model.show()
@@ -158,5 +153,5 @@ try:
 except Exception as e:
     error_msg = f"Error processing subject {subject_id}: {str(e)}"
     # Save error information with cue and coherence in filename
-    with open(os.path.join(results_dir, f's{subject_id}_{coherence}coh_error.txt'), 'w') as f:
+    with open(os.path.join(results_dir, f'{subject_id}_{coherence}coh_error.txt'), 'w') as f:
         f.write(error_msg)
