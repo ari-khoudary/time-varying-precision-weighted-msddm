@@ -25,7 +25,7 @@ coherence = args.coherence
 cue = args.cue
 
 # Create results directory if it doesn't exist
-results_dir = f'results/{cue}cue/'
+results_dir = f'results_parallel/{cue}cue/'
 os.makedirs(results_dir, exist_ok=True)
 
 # define one drift function for neutral and one for biased cues
@@ -46,25 +46,28 @@ def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
                  n2_cong, n2_incong, s2_cong, s2_incong):
     # drift rate during first noise period
     if t < signal1_onset:
-        n1_biased
+	if congruent == 'congruent':
+	    return n1_biased
+	else:
+	   return -n1_biased
     # drift rates during first signal period
     elif t >= signal1_onset and t < noise2_onset:
         if congruent == 'congruent':
             return s1_cong
         else:  # incongruent
-            return -s1_incong
+            return s1_incong
     # drift rates during the second noise period
     elif t >= noise2_onset and t < signal2_onset:
         if congruent == 'congruent':
             return n2_cong
         else:  # incongruent
-            return -n2_incong
+            return n2_incong
     # drift rates during the second signal period
     elif t >= signal2_onset:
         if congruent == 'congruent':
             return s2_cong
         else:  # incongruent
-            return -s2_incong
+            return s2_incong
 
 try:
     # Check if tidy version of dataframe already exists
@@ -75,7 +78,7 @@ try:
         df = pd.read_csv(tidy_file_path)
     else:
         # Load and tidy the raw data
-        df = pd.read_csv(f'../../simulated_data/{subject_id}.csv') 
+        df = pd.read_csv(f'../../simulated_data/parallel_data/{subject_id}.csv') 
         # remove trials with no free choice
         df = df.dropna(subset=['freeChoice'])
         # update variable names to match existing code
@@ -111,8 +114,8 @@ try:
             T_dur = 4.3,
             nondecision=0,
             parameters={'B': (1, 15), 
-                        'n1_neut': (-1, 10), 's1_neut': (-1, 10), 
-                        'n2_neut': (-1, 10), 's2_neut': (-1, 10)},
+                        'n1_neut': (-10, 10), 's1_neut': (-10, 10), 
+                        'n2_neut': (-10, 10), 's2_neut': (-10, 10)},
             conditions = ['signal1_onset', 'noise2_onset', 'signal2_onset']
         )
     else:  # biased cues
@@ -123,10 +126,10 @@ try:
             T_dur = 4.3,
             nondecision=0,
             parameters={'B': (1, 15), 
-                        'n1_biased': (-1, 10), 
-                        's1_cong': (-1, 10), 's1_incong': (-1, 10),
-                        'n2_cong': (-1, 10), 'n2_incong': (-1, 10),
-                        's2_cong': (-1, 10), 's2_incong': (-1, 10)},
+                        'n1_biased': (-10, 10), 
+                        's1_cong': (-1, 10), 's1_incong': (-10, 1),
+                        'n2_cong': (-1, 10), 'n2_incong': (-10, 1),
+                        's2_cong': (-1, 10), 's2_incong': (-10, 1)},
             conditions = ['congruent', 'signal1_onset', 'noise2_onset', 'signal2_onset']
         )
 

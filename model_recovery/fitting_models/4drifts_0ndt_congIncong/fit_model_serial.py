@@ -46,28 +46,31 @@ def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
                  n2_cong, n2_incong, s2_cong, s2_incong):
     # drift rate during first noise period
     if t < signal1_onset:
-        n1_biased
+	if congruent == 'congruent':
+           return n1_biased
+	else:
+	    return -n1_biased
 
     # drift rates during first signal period
     elif t >= signal1_onset and t < noise2_onset:
         if congruent == 'congruent':
             return s1_cong
         else:  # incongruent
-            return -s1_incong
+            return s1_incong
 
     # drift rates during the second noise period
     elif t >= noise2_onset and t < signal2_onset:
         if congruent == 'congruent':
             return n2_cong
         else:  # incongruent
-            return -n2_incong
+            return n2_incong
 
     # drift rates during the second signal period
     elif t >= signal2_onset:
         if congruent == 'congruent':
             return s2_cong
         else:  # incongruent
-            return -s2_incong
+            return s2_incong
 
 try:
     # Check if tidy version of dataframe already exists
@@ -125,10 +128,10 @@ try:
             T_dur = 4.3,
             nondecision=0,
             parameters={'B': (1, 15), 
-                        'n1_cong': (-1, 10), 'n1_incong': (-1, 10),
-                        's1_cong': (-1, 10), 's1_incong': (-1, 10),
-                        'n2_cong': (-1, 10), 'n2_incong': (-1, 10),
-                        's2_cong': (-1, 10), 's2_incong': (-1, 10)},
+                        'n1_biased': (-10, 10), 
+                        's1_cong': (-1, 10), 's1_incong': (-10, 1),
+                        'n2_cong': (-1, 10), 'n2_incong': (-10, 1),
+                        's2_cong': (-1, 10), 's2_incong': (-10, 1)},
             conditions = ['congruent', 'signal1_onset', 'noise2_onset', 'signal2_onset']
         )
 
