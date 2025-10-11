@@ -25,7 +25,7 @@ coherence = args.coherence
 cue = args.cue
 
 # Create results directory if it doesn't exist
-results_dir = f'results/{cue}cue/'
+results_dir = f'results_parallel/{cue}cue/'
 os.makedirs(results_dir, exist_ok=True)
 
 # define one drift function for neutral and one for biased cues
@@ -46,11 +46,7 @@ def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
                  n2_cong, n2_incong, s2_cong, s2_incong):
     # drift rate during first noise period
     if t < signal1_onset:
-        if congruent == 'congruent':
-            return n1_biased
-        else:
-            return -n1_biased
-
+        n1_biased
     # drift rates during first signal period
     elif t >= signal1_onset and t < noise2_onset:
         if congruent == 'congruent':
@@ -79,7 +75,7 @@ try:
         df = pd.read_csv(tidy_file_path)
     else:
         # Load and tidy the raw data
-        df = pd.read_csv(f'../../simulated_data/{subject_id}.csv') 
+        df = pd.read_csv(f'../../simulated_data/parallel_data/{subject_id}.csv') 
         # remove trials with no free choice
         df = df.dropna(subset=['freeChoice'])
         # update variable names to match existing code
