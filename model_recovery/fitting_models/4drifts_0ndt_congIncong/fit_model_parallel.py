@@ -46,7 +46,10 @@ def drift_biased(t, congruent, signal1_onset, noise2_onset, signal2_onset,
                  n2_cong, n2_incong, s2_cong, s2_incong):
     # drift rate during first noise period
     if t < signal1_onset:
-        n1_biased
+        if congruent == 'congruent':
+            return n1_biased
+        else:
+            return -n1_biased
     # drift rates during first signal period
     elif t >= signal1_onset and t < noise2_onset:
         if congruent == 'congruent':
