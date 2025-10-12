@@ -1,0 +1,46 @@
+Serial model 
+
+ Subject: sub4, Coherence: 0.61, Cue: 0.8
+Model information:
+Choices: 'correct' (upper boundary), 'error' (lower boundary)
+Drift component DriftEasy:
+    easy_drift
+    Fitted parameters:
+    - n1_biased: 0.372459
+    - s1_cong: 3.344131
+    - s1_incong: -1.213998
+    - n2_cong: 8.084594
+    - n2_incong: -9.282721
+    - s2_cong: 2.051808
+    - s2_incong: -2.044148
+Noise component NoiseConstant:
+    constant
+    Fixed parameters:
+    - noise: 1.000000
+Bound component BoundConstant:
+    constant
+    Fitted parameters:
+    - B: 1.004454 (WARNING: AT BOUNDARY)
+IC component ICPointRatio:
+    An arbitrary starting point expressed as a proportion of the distance between the bounds.
+    Fixed parameters:
+    - x0: 0.000000
+Overlay component OverlayChain:
+    Overlay component OverlayNonDecision:
+        Add a non-decision by shifting the histogram
+        Fixed parameters:
+        - nondectime: 0.000000
+    Overlay component OverlayUniformMixture:
+        Uniform distribution mixture model
+        Fixed parameters:
+        - umixturecoef: 0.020000
+Fit information:
+    Loss function: Negative log likelihood
+    Loss function value: 3174.6722193400515
+    Fitting method: differential_evolution
+    Solver: auto
+    Other properties:
+        - nparams: 8
+        - samplesize: 4000
+        - mess: ''
+

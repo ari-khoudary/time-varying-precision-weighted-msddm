@@ -1,0 +1,12 @@
+Serial model 
+
+ Subject: sub3
+Coherence: 0.56
+Cue: 0.5
+Loss: 7496.18952493801
+Parameters:
+drift: {'n1_neut': Fitted(0.3122773120591004, minval=-10, maxval=10), 's1_neut': Fitted(-0.493747223771841, minval=-10, maxval=10), 'n2_neut': Fitted(-0.40777458796194654, minval=-10, maxval=10), 's2_neut': Fitted(0.020574324740794483, minval=-10, maxval=10)}
+noise: {'noise': 1}
+bound: {'B': Fitted(1.3369403488547693, minval=1, maxval=15)}
+IC: {'x0': 0}
+overlay: {'nondectime': 0, 'umixturecoef': 0.02}

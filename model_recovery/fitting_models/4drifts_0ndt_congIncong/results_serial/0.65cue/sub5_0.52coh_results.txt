@@ -1,0 +1,12 @@
+Serial model 
+
+ Subject: sub5
+Coherence: 0.52
+Cue: 0.65
+Loss: 3433.283385892464
+Parameters:
+drift: {'n1_biased': Fitted(0.37872467454451636, minval=-10, maxval=10), 's1_cong': Fitted(8.295735408233398, minval=-1, maxval=10), 's1_incong': Fitted(-6.263890068972023, minval=-10, maxval=1), 'n2_cong': Fitted(6.250713751325019, minval=-1, maxval=10), 'n2_incong': Fitted(-6.408060675648409, minval=-10, maxval=1), 's2_cong': Fitted(2.086847956791507, minval=-1, maxval=10), 's2_incong': Fitted(-1.9162991599985713, minval=-10, maxval=1)}
+noise: {'noise': 1}
+bound: {'B': Fitted(2.094410668318079, minval=1, maxval=15)}
+IC: {'x0': 0}
+overlay: {'nondectime': 0, 'umixturecoef': 0.02}
