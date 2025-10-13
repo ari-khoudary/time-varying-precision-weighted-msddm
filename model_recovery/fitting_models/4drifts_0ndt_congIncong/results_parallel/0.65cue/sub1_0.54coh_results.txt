@@ -1,0 +1,10 @@
+Subject: sub1
+Coherence: 0.54
+Cue: 0.65
+Loss: 10705.73296717785
+Parameters:
+drift: {'n1_biased': Fitted(1.9138405951131088, minval=-10, maxval=10), 's1_cong': Fitted(1.6574944420480224, minval=-1, maxval=10), 's1_incong': Fitted(-3.2430389744641146, minval=-10, maxval=1), 'n2_cong': Fitted(3.045867907684739, minval=-1, maxval=10), 'n2_incong': Fitted(-2.869003458595525, minval=-10, maxval=1), 's2_cong': Fitted(6.065742637966912, minval=-1, maxval=10), 's2_incong': Fitted(-6.914038978441407, minval=-10, maxval=1)}
+noise: {'noise': 1}
+bound: {'B': Fitted(5.784233303496568, minval=1, maxval=15)}
+IC: {'x0': 0}
+overlay: {'nondectime': 0, 'umixturecoef': 0.02}
