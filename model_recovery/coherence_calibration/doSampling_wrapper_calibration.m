@@ -2,7 +2,7 @@
 clear
 nSub = 10; % per cell
 nTrial = 1000; % per subject
-coherence = 0.5:0.01:0.65;
+coherence = 0.5:0.001:0.7;
 threshold = 3:3:30;
 memoryThinning = 12;
 visionThinning = 1;
