@@ -10,6 +10,8 @@
 #SBATCH -t 2-00:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=makhouda@uci.edu
+#SBATCH --array=0-9 # one array per subject
+
 
 mkdir -p slurm_messages
 module load MATLAB/R2023b

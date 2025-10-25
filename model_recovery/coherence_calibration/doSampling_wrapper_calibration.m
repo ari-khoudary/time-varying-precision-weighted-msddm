@@ -1,8 +1,8 @@
 %% specify simulation settings
 clear
-nSub = 500; % per cell
+nSub = 10; % per cell
 nTrial = 1000; % per subject
-coherence = 0.51:0.01:0.65;
+coherence = 0.5:0.01:0.65;
 threshold = 3:3:30;
 memoryThinning = 12;
 visionThinning = 1;
@@ -70,27 +70,12 @@ for a = 1:length(coherence)
     end
 end
 
-%% run simulation in parallel
+%% run each subject as an array
+slurm_task_id = str2double(getenv('SLURM_ARRAY_TASK_ID'));
+subID = slurm_task_id + 1;
 
-% calculate total number of iterations
-totalIterations = length(allConfigs) * nSub;
-
-% initialize structure to store output of each iteraction
-allData = cell(totalIterations, 1);
-
-% create arrays for parallel processing
-configIdx = zeros(totalIterations, 1);
-subIdx = zeros(totalIterations, 1);
-
-% populate indices
-counter = 1;
-for c = 1:length(allConfigs)
-    for subj = 1:nSub
-        configIdx(counter) = c;
-        subIdx(counter) = subj;
-        counter = counter + 1;
-    end
-end
+% initialize structure to store data
+allData = cell(nCombo, 1);
 
 % start parallel pool
 if isempty(gcp('nocreate'))
@@ -98,13 +83,11 @@ if isempty(gcp('nocreate'))
 end
 
 %% loop over iterations in parallel
-parfor it = 1:totalIterations
-    thisConfig = allConfigs{configIdx(it)};
-    thisConfig.subID = subIdx(it);
-    allData{it} = doSampling_calibration(thisConfig);
+parfor configIdx = 1:nCombo
+    thisConfig = allConfigs{configIdx};
+    thisConfig.subID = subID;
+    allData{configIdx} = doSampling_calibration(thisConfig);
 end
-
-
 
 %% concatenate all tables
 data = vertcat(allData{:});
@@ -118,5 +101,5 @@ if ~exist(outDir, 'dir')
     mkdir(outDir);
 end
 timestamp = string(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
-filename = sprintf('results_%s.csv', timestamp);
+filename = sprintf('s%d_%s.csv', subID, timestamp);
 writetable(data, fullfile(outDir, filename));
