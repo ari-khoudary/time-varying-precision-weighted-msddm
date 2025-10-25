@@ -18,11 +18,11 @@ nFrames = noNoiseTrialDuration / vizPresentationRate;
 
 if flickerPadding == 1
     % rows = timesteps, columns = trials
-    visionEvidence = (binornd(1,coherence, [nFrames*2,nTrial])*2-1) + normrnd(0,1,[nFrames*2,nTrial]);
+    visionEvidence = (binornd(1,coherence, [nFrames,nTrial])*2-1) + normrnd(0,1,[nFrames,nTrial]);
     noiseFrames = 1:2:size(visionEvidence, 1); % returns the index of every other row
     visionEvidence(noiseFrames, :) = 0;
 else
-    visionEvidence = (binornd(1,coherence, [nFrames*2,nTrial])*2-1) + normrnd(0,1,[nFrames*2,nTrial]);
+    visionEvidence = (binornd(1,coherence, [nFrames,nTrial])*2-1) + normrnd(0,1,[nFrames,nTrial]);
 end
 
 % computes decision variable on each trial
